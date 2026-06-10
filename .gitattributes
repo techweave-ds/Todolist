@@ -1,0 +1,8 @@
+/package.json text diff=json
+/package-lock.json text diff=json
+*.ts text diff=typescript
+*.tsx text diff=typescript
+*.css text diff=css
+*.js text diff=javascript
+*.mjs text diff=javascript
+*.json text diff=json
