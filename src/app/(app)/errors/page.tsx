@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { AlertTriangle, Search, ChevronRight } from "lucide-react";
+import { AlertTriangle, Search, ChevronRight, Bug, Filter } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +15,13 @@ const categories: ErrorCategory[] = [
   "Stash Errors", "Tag Errors", "Detached HEAD Errors", "Submodule Errors",
   "Index Errors", "Recovery Errors"
 ];
+
+const severityConfig = {
+  critical: "bg-red-500/10 text-red-400 border-red-500/30",
+  high: "bg-orange-500/10 text-orange-400 border-orange-500/30",
+  medium: "bg-yellow-500/10 text-yellow-400 border-yellow-500/30",
+  low: "bg-emerald-500/10 text-emerald-400 border-emerald-500/30",
+};
 
 export default function ErrorsPage() {
   const [errors, setErrors] = useState<GitError[]>([]);
@@ -33,20 +40,15 @@ export default function ErrorsPage() {
     return matchesSearch && matchesCategory;
   });
 
-  const severityColor = (s?: string) => {
-    if (s === "critical") return "destructive";
-    if (s === "high") return "destructive";
-    if (s === "medium") return "secondary";
-    return "outline";
-  };
-
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <AlertTriangle className="h-6 w-6 text-destructive" />
+      <div className="flex items-center gap-4">
+        <div className="p-3 rounded-2xl bg-gradient-to-br from-red-500/20 to-orange-500/20 border border-red-500/20">
+          <Bug className="h-6 w-6 text-red-400" />
+        </div>
         <div>
           <h1 className="text-2xl font-bold">Git Error Center</h1>
-          <p className="text-sm text-muted-foreground">Search and browse 1,000+ Git errors</p>
+          <p className="text-sm text-muted-foreground">Search and browse 1,000+ Git errors with solutions</p>
         </div>
       </div>
 
@@ -57,19 +59,22 @@ export default function ErrorsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search errors by title, description..."
-            className="pl-9"
+            className="pl-9 border-red-500/20"
           />
         </div>
-        <select
-          value={selectedCategory}
-          onChange={(e) => setSelectedCategory(e.target.value)}
-          className="rounded-md border border-input bg-transparent px-3 py-1.5 text-sm shadow-sm"
-        >
-          <option value="all">All Categories</option>
-          {categories.map((c) => (
-            <option key={c} value={c}>{c}</option>
-          ))}
-        </select>
+        <div className="relative">
+          <Filter className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+          <select
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+            className="rounded-lg border border-red-500/20 bg-background/50 pl-9 pr-4 py-1.5 text-sm shadow-sm appearance-none min-w-[160px]"
+          >
+            <option value="all">All Categories</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -79,8 +84,8 @@ export default function ErrorsPage() {
             onClick={() => setSelectedCategory(selectedCategory === cat ? "all" : cat)}
             className={`px-3 py-1 text-xs rounded-full border transition-colors ${
               selectedCategory === cat
-                ? "bg-primary/10 border-primary/30 text-primary"
-                : "border-border text-muted-foreground hover:border-primary/30"
+                ? "bg-red-500/20 border-red-500/30 text-red-300"
+                : "border-border text-muted-foreground hover:border-red-500/30"
             }`}
           >
             {cat}
@@ -101,15 +106,19 @@ export default function ErrorsPage() {
             transition={{ delay: i * 0.02 }}
           >
             <a href={`/errors/${error.id}`}>
-              <Card className="hover:border-primary/30 transition-all hover:translate-x-1 cursor-pointer">
+              <Card className="group hover:border-red-500/30 transition-all hover:-translate-y-0.5 cursor-pointer border-red-500/10">
                 <CardContent className="py-3 flex items-center gap-3">
-                  <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                  <AlertTriangle className="h-4 w-4 text-red-400 shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{error.title}</p>
+                    <p className="text-sm font-medium">{error.title}</p>
                     <p className="text-xs text-muted-foreground truncate">{error.category}</p>
                   </div>
-                  <Badge variant={severityColor(error.severity)} className="shrink-0">{error.severity}</Badge>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                  {error.severity && (
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${severityConfig[error.severity as keyof typeof severityConfig] || severityConfig.low}`}>
+                      {error.severity}
+                    </span>
+                  )}
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
                 </CardContent>
               </Card>
             </a>
@@ -117,7 +126,7 @@ export default function ErrorsPage() {
         ))}
         {filtered.length === 0 && (
           <div className="text-center py-12 text-muted-foreground">
-            <AlertTriangle className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <Bug className="h-10 w-10 mx-auto mb-2 opacity-30" />
             <p>No errors found</p>
           </div>
         )}

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Search, Terminal, AlertTriangle, BookOpen, GraduationCap, GitBranch, GitCommit, ArrowRight, Star, GitPullRequest, FileText, Package, LifeBuoy } from "lucide-react";
+import { Search, Terminal, AlertTriangle, BookOpen, GraduationCap, GitBranch, GitCommit, ArrowRight, Star, GitPullRequest, FileText, Package, LifeBuoy, Zap, MessageSquareText, FolderGit2, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -11,27 +11,29 @@ import { useRouter } from "next/navigation";
 import type { GitError, CommandRecipe, CheatSheet, Article } from "@/types";
 
 const stats = [
-  { label: "Git Errors", value: "1,000+", icon: AlertTriangle },
-  { label: "Commands", value: "500+", icon: Terminal },
-  { label: "Cheat Sheets", value: "150+", icon: BookOpen },
-  { label: "Articles", value: "200+", icon: GraduationCap },
+  { label: "Git Errors Solved", value: "1,000+", icon: AlertTriangle, color: "from-rose-500 to-pink-500" },
+  { label: "Command Recipes", value: "500+", icon: Terminal, color: "from-violet-500 to-purple-500" },
+  { label: "Cheat Sheets", value: "150+", icon: BookOpen, color: "from-emerald-500 to-teal-500" },
+  { label: "Learning Articles", value: "200+", icon: GraduationCap, color: "from-cyan-500 to-blue-500" },
 ];
 
 const quickActions = [
-  { label: "Commit Generator", href: "/commit-generator", icon: GitCommit, desc: "Generate conventional commits" },
-  { label: "README Generator", href: "/readme-generator", icon: FileText, desc: "Create professional READMEs" },
-  { label: "PR Generator", href: "/pr-generator", icon: GitPullRequest, desc: "Generate PR descriptions" },
-  { label: "Release Notes", href: "/release-notes-generator", icon: Package, desc: "Generate release notes" },
-  { label: "Repo Analyzer", href: "/repo-analyzer", icon: Search, desc: "Analyze GitHub repos" },
-  { label: "Workflow Builder", href: "/workflow-builder", icon: GitBranch, desc: "Build Git workflows" },
-  { label: "Troubleshooter", href: "/troubleshooter", icon: LifeBuoy, desc: "Fix Git problems" },
+  { label: "Smart Command", href: "/commands", icon: Zap, desc: "Describe what you want", gradient: "from-violet-500/20 to-purple-500/10" },
+  { label: "Folder Builder", href: "/commands", icon: FolderGit2, desc: "Generate from directory", gradient: "from-blue-500/20 to-cyan-500/10" },
+  { label: "Commits", href: "/commit-generator", icon: GitCommit, desc: "Generate commit messages", gradient: "from-emerald-500/20 to-teal-500/10" },
+  { label: "README", href: "/readme-generator", icon: FileText, desc: "Create README files", gradient: "from-amber-500/20 to-orange-500/10" },
+  { label: "PRs", href: "/pr-generator", icon: GitPullRequest, desc: "Pull request descs", gradient: "from-rose-500/20 to-pink-500/10" },
+  { label: "Release Notes", href: "/release-notes-generator", icon: Package, desc: "Generate changelogs", gradient: "from-indigo-500/20 to-violet-500/10" },
+  { label: "Analyze", href: "/repo-analyzer", icon: Search, desc: "Analyze any repo", gradient: "from-sky-500/20 to-blue-500/10" },
+  { label: "Troubleshoot", href: "/troubleshooter", icon: LifeBuoy, desc: "Fix Git problems", gradient: "from-red-500/20 to-rose-500/10" },
+  { label: "Workflows", href: "/workflow-builder", icon: GitBranch, desc: "Build Git workflows", gradient: "from-green-500/20 to-emerald-500/10" },
 ];
 
 const learningTracks = [
-  { title: "Git Foundations", href: "/learn", desc: "Start here if you're new to Git", level: "Beginner" },
-  { title: "Git Collaboration", href: "/learn", desc: "Working with teams using Git", level: "Intermediate" },
-  { title: "Release Management", href: "/learn", desc: "Tags, releases, and versioning", level: "Advanced" },
-  { title: "Enterprise Git", href: "/learn", desc: "Git at scale for organizations", level: "Expert" },
+  { title: "Git Foundations", desc: "Start from zero", level: "Beginner", color: "from-emerald-500 to-teal-500" },
+  { title: "Git Collaboration", desc: "Work with teams", level: "Intermediate", color: "from-blue-500 to-cyan-500" },
+  { title: "Release Management", desc: "Ship with confidence", level: "Advanced", color: "from-violet-500 to-purple-500" },
+  { title: "Enterprise Git", desc: "Scale your org", level: "Expert", color: "from-amber-500 to-orange-500" },
 ];
 
 export default function HomePage() {
@@ -39,76 +41,90 @@ export default function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [popularErrors, setPopularErrors] = useState<GitError[]>([]);
   const [popularCommands, setPopularCommands] = useState<CommandRecipe[]>([]);
-  const [featuredCheatsheets, setFeaturedCheatsheets] = useState<CheatSheet[]>([]);
-  const [recentArticles, setRecentArticles] = useState<Article[]>([]);
 
   useEffect(() => {
     async function load() {
       const { errors } = await import("@/data/errors");
       const { commands } = await import("@/data/commands");
-      const { cheatsheets } = await import("@/data/cheatsheets");
-      const { articles } = await import("@/data/articles");
-      setPopularErrors(errors.slice(0, 5));
+      setPopularErrors(errors.filter((e: GitError) => e.severity === "critical" || e.severity === "high").slice(0, 5));
       setPopularCommands(commands.slice(0, 5));
-      setFeaturedCheatsheets(cheatsheets.slice(0, 4));
-      setRecentArticles(articles.slice(0, 4));
     }
     load();
   }, []);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (searchQuery.trim()) {
-      router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
-    }
+    if (searchQuery.trim()) router.push(`/search?q=${encodeURIComponent(searchQuery)}`);
   };
 
   return (
-    <div className="space-y-16 pb-16">
+    <div className="space-y-24 pb-16">
       {/* Hero */}
-      <section className="relative pt-12 md:pt-20 text-center">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-          <Badge variant="outline" className="mb-4 px-3 py-1 text-xs border-primary/30 text-primary bg-primary/5">
+      <section className="relative pt-16 md:pt-24 text-center overflow-hidden">
+        <div className="absolute inset-0 bg-grid opacity-30" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-violet-500/10 blur-[120px]" />
+        <div className="absolute top-1/3 right-1/4 w-[300px] h-[300px] rounded-full bg-cyan-500/5 blur-[80px]" />
+
+        <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="relative">
+          <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.2 }} className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-violet-500/20 bg-violet-500/10 text-sm text-violet-300 mb-6">
+            <Sparkles className="h-3.5 w-3.5" />
             Free &bull; Open Source &bull; Cloudflare
-          </Badge>
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-4 bg-gradient-to-r from-white via-white to-gray-400 bg-clip-text text-transparent">
+          </motion.div>
+
+          <h1 className="text-5xl md:text-7xl font-bold tracking-tight mb-4 leading-tight">
             Search Errors.
             <br />
-            <span className="bg-gradient-to-r from-primary to-purple-400 bg-clip-text text-transparent">
-              Generate Commands.
-            </span>
+            <span className="text-shimmer">Generate Commands.</span>
             <br />
-            Master Git.
+            <span className="bg-gradient-to-r from-violet-400 via-cyan-400 to-violet-400 bg-clip-text text-transparent">Master Git.</span>
           </h1>
-          <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-8">
-            The single destination for Git and GitHub help. Search 1,000+ errors, generate commands,
-            create commits, and learn Git — all for free.
+
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
+            The ultimate Git & GitHub developer platform. Search 1,000+ errors, generate commands
+            from plain English, build folder-based workflows — all free, all client-side.
           </p>
 
-          <form onSubmit={handleSearch} className="max-w-xl mx-auto relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search 1,000+ Git errors, commands, guides..."
-              className="pl-10 h-12 text-base border-primary/20 focus-visible:ring-primary"
-            />
-            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex h-6 items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] text-muted-foreground">
-              ⌘K
-            </kbd>
+          <form onSubmit={handleSearch} className="max-w-2xl mx-auto relative">
+            <div className="relative group">
+              <div className="absolute -inset-1 bg-gradient-to-r from-violet-500 via-cyan-500 to-violet-500 rounded-xl opacity-20 group-hover:opacity-40 blur transition-all duration-500 animate-gradient" />
+              <div className="relative flex">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground z-10" />
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder='Try "how to undo last commit" or "push to github"...'
+                  className="pl-12 h-14 text-base bg-background/80 border-violet-500/30 focus-visible:ring-violet-500 rounded-xl flex-1"
+                />
+                <Button type="submit" className="absolute right-1.5 top-1/2 -translate-y-1/2 h-11 px-5 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white border-0 rounded-lg">
+                  <Zap className="h-4 w-4 mr-2" /> Search
+                </Button>
+              </div>
+            </div>
+            <div className="flex flex-wrap justify-center gap-2 mt-4">
+              {["undo last commit", "merge conflict", "push to github", "create branch", ".env committed"].map((s) => (
+                <button key={s} onClick={() => router.push(`/search?q=${encodeURIComponent(s)}`)} className="text-xs px-3 py-1 rounded-full border border-violet-500/10 text-muted-foreground hover:text-foreground hover:border-violet-500/30 transition-all bg-muted/50">
+                  {s}
+                </button>
+              ))}
+            </div>
           </form>
         </motion.div>
       </section>
 
       {/* Stats */}
       <section className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {stats.map((stat) => (
-          <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-            <Card className="text-center hover:border-primary/30 transition-colors">
-              <CardContent className="pt-6">
-                <stat.icon className="h-6 w-6 mx-auto mb-2 text-primary" />
-                <div className="text-2xl font-bold">{stat.value}</div>
-                <div className="text-xs text-muted-foreground">{stat.label}</div>
+        {stats.map((stat, i) => (
+          <motion.div key={stat.label} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }}>
+            <Card className="relative overflow-hidden group hover:border-violet-500/30 transition-all duration-500">
+              <div className={`absolute inset-0 bg-gradient-to-br ${stat.color} opacity-[0.03] group-hover:opacity-[0.08] transition-opacity`} />
+              <CardContent className="pt-6 relative">
+                <div className="flex justify-center mb-3">
+                  <div className={`p-2.5 rounded-xl bg-gradient-to-br ${stat.color} bg-opacity-20`}>
+                    <stat.icon className="h-5 w-5 text-white" />
+                  </div>
+                </div>
+                <div className={`text-3xl font-bold bg-gradient-to-r ${stat.color} bg-clip-text text-transparent`}>{stat.value}</div>
+                <div className="text-xs text-muted-foreground mt-1">{stat.label}</div>
               </CardContent>
             </Card>
           </motion.div>
@@ -117,36 +133,73 @@ export default function HomePage() {
 
       {/* Quick Actions */}
       <section>
-        <h2 className="text-xl font-semibold mb-4 flex items-center gap-2">
-          <Star className="h-5 w-5 text-primary" /> Quick Actions
-        </h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-          {quickActions.map((action) => (
-            <a key={action.href} href={action.href}>
-              <Card className="text-center hover:border-primary/30 transition-all hover:translate-y-[-2px] cursor-pointer h-full">
-                <CardContent className="pt-4 pb-3">
-                  <action.icon className="h-5 w-5 mx-auto mb-2 text-primary" />
-                  <div className="text-xs font-medium">{action.label}</div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">{action.desc}</div>
+        <div className="flex items-center gap-3 mb-6">
+          <Star className="h-5 w-5 text-violet-400" />
+          <h2 className="text-xl font-semibold">Quick Actions</h2>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          {quickActions.map((action, i) => (
+            <motion.a
+              key={action.label}
+              href={action.href}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.03 }}
+            >
+              <Card className="relative overflow-hidden group hover:border-violet-500/30 transition-all duration-300 hover:-translate-y-0.5 cursor-pointer h-full">
+                <div className={`absolute inset-0 bg-gradient-to-br ${action.gradient} opacity-0 group-hover:opacity-100 transition-opacity`} />
+                <CardContent className="py-4 relative">
+                  <div className="p-2 rounded-lg bg-violet-500/10 w-fit mb-3 group-hover:scale-110 transition-transform">
+                    <action.icon className="h-4 w-4 text-violet-400" />
+                  </div>
+                  <div className="text-sm font-medium">{action.label}</div>
+                  <div className="text-xs text-muted-foreground mt-0.5">{action.desc}</div>
                 </CardContent>
               </Card>
-            </a>
+            </motion.a>
           ))}
+        </div>
+      </section>
+
+      {/* Natural Language CTA */}
+      <section className="relative overflow-hidden rounded-2xl border border-violet-500/20">
+        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/5 via-cyan-500/5 to-violet-500/5" />
+        <div className="absolute inset-0 bg-grid opacity-20" />
+        <div className="relative p-8 md:p-12 text-center">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }}>
+            <Badge className="mb-4 bg-violet-500/10 text-violet-300 border-violet-500/20 px-3 py-1">
+              <MessageSquareText className="h-3.5 w-3.5 mr-1.5" /> New
+            </Badge>
+            <h2 className="text-2xl md:text-3xl font-bold mb-3">
+              Just describe what you need
+            </h2>
+            <p className="text-muted-foreground max-w-xl mx-auto mb-6">
+              Type <span className="text-violet-300 font-mono text-sm">"I accidentally committed my .env file"</span> or <span className="text-cyan-300 font-mono text-sm">"push my project to GitHub"</span> — we'll give you the exact commands.
+            </p>
+            <div className="flex flex-wrap justify-center gap-3">
+              <Button onClick={() => router.push("/commands")} className="bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-500 hover:to-purple-500 text-white border-0">
+                <MessageSquareText className="h-4 w-4 mr-2" /> Try Natural Language
+              </Button>
+              <Button onClick={() => router.push("/troubleshooter")} variant="outline" className="border-violet-500/30 hover:bg-violet-500/10">
+                <LifeBuoy className="h-4 w-4 mr-2" /> Troubleshooter
+              </Button>
+            </div>
+          </motion.div>
         </div>
       </section>
 
       {/* Popular Errors */}
       <section>
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Popular Errors</h2>
-          <a href="/errors" className="text-sm text-primary hover:underline flex items-center gap-1">View all <ArrowRight className="h-3 w-3" /></a>
+          <h2 className="text-xl font-semibold">🔥 Popular Errors</h2>
+          <a href="/errors" className="text-sm text-violet-400 hover:text-violet-300 flex items-center gap-1"><ArrowRight className="h-3 w-3" /> View all 1,000+</a>
         </div>
         <div className="space-y-2">
-          {popularErrors.map((error) => (
-            <a key={error.id} href={`/errors/${error.id}`}>
-              <Card className="hover:border-primary/30 transition-all hover:translate-x-1 cursor-pointer">
+          {popularErrors.map((error, i) => (
+            <motion.a key={error.id} href={`/errors/${error.id}`} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.05 }}>
+              <Card className="group hover:border-violet-500/30 transition-all hover:translate-x-1 cursor-pointer">
                 <CardContent className="py-3 flex items-center gap-3">
-                  <AlertTriangle className="h-4 w-4 text-destructive shrink-0" />
+                  <AlertTriangle className="h-4 w-4 text-rose-400 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{error.title}</p>
                     <p className="text-xs text-muted-foreground">{error.category}</p>
@@ -154,103 +207,54 @@ export default function HomePage() {
                   <Badge variant={error.severity === "critical" ? "destructive" : "secondary"} className="shrink-0">{error.severity}</Badge>
                 </CardContent>
               </Card>
-            </a>
+            </motion.a>
           ))}
         </div>
       </section>
 
-      {/* Popular Commands */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold">Popular Commands</h2>
-          <a href="/commands" className="text-sm text-primary hover:underline flex items-center gap-1">View all <ArrowRight className="h-3 w-3" /></a>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {popularCommands.map((cmd) => (
-            <a key={cmd.id} href={`/commands/${cmd.id}`}>
-              <Card className="hover:border-primary/30 transition-all hover:translate-y-[-2px] cursor-pointer">
-                <CardContent className="py-3 flex items-center gap-3">
-                  <Terminal className="h-4 w-4 text-primary shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{cmd.title}</p>
-                    <p className="text-xs text-muted-foreground truncate">{cmd.description}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            </a>
-          ))}
-        </div>
-      </section>
-
-      {/* Learning Tracks */}
-      <section>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-xl font-semibold flex items-center gap-2">
-            <GraduationCap className="h-5 w-5 text-primary" /> Learning Tracks
-          </h2>
-          <a href="/learn" className="text-sm text-primary hover:underline flex items-center gap-1">View all <ArrowRight className="h-3 w-3" /></a>
-        </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {learningTracks.map((track) => (
-            <a key={track.title} href={track.href}>
-              <Card className="hover:border-primary/30 transition-all hover:translate-y-[-2px] cursor-pointer">
-                <CardHeader>
-                  <CardTitle className="text-base">{track.title}</CardTitle>
-                  <CardDescription>{track.desc}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Badge variant="outline" className="text-xs">{track.level}</Badge>
-                </CardContent>
-              </Card>
-            </a>
-          ))}
-        </div>
-      </section>
-
-      {/* Featured Cheat Sheets & Recent Articles */}
+      {/* Commands & Guide */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold flex items-center gap-2">
-              <BookOpen className="h-5 w-5 text-primary" /> Cheat Sheets
-            </h2>
-            <a href="/cheat-sheets" className="text-sm text-primary hover:underline flex items-center gap-1">View all <ArrowRight className="h-3 w-3" /></a>
+            <h2 className="text-xl font-semibold">⚡ Popular Commands</h2>
+            <a href="/commands" className="text-sm text-violet-400 hover:text-violet-300 flex items-center gap-1"><ArrowRight className="h-3 w-3" /> View all 500+</a>
           </div>
           <div className="space-y-2">
-            {featuredCheatsheets.map((cs) => (
-              <a key={cs.id} href={`/cheat-sheets/${cs.id}`}>
-                <Card className="hover:border-primary/30 transition-all cursor-pointer">
+            {popularCommands.map((cmd, i) => (
+              <motion.a key={cmd.id} href={`/commands/${cmd.id}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.05 }}>
+                <Card className="group hover:border-cyan-500/30 transition-all hover:-translate-y-0.5 cursor-pointer">
                   <CardContent className="py-3 flex items-center gap-3">
-                    <BookOpen className="h-4 w-4 text-primary shrink-0" />
+                    <Terminal className="h-4 w-4 text-cyan-400 shrink-0" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{cs.title}</p>
-                      <p className="text-xs text-muted-foreground">{cs.category} &bull; {cs.level}</p>
+                      <p className="text-sm font-medium truncate">{cmd.title}</p>
+                      <p className="text-xs text-muted-foreground truncate">{cmd.description}</p>
                     </div>
+                    <Badge variant="outline" className="text-[10px] shrink-0">{cmd.category}</Badge>
                   </CardContent>
                 </Card>
-              </a>
+              </motion.a>
             ))}
           </div>
         </section>
 
         <section>
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-xl font-semibold flex items-center gap-2">
-              <GraduationCap className="h-5 w-5 text-primary" /> Recent Guides
-            </h2>
-            <a href="/learn" className="text-sm text-primary hover:underline flex items-center gap-1">View all <ArrowRight className="h-3 w-3" /></a>
+            <h2 className="text-xl font-semibold">📚 Learning Tracks</h2>
+            <a href="/learn" className="text-sm text-violet-400 hover:text-violet-300 flex items-center gap-1"><ArrowRight className="h-3 w-3" /> View all 200+</a>
           </div>
-          <div className="space-y-2">
-            {recentArticles.map((article) => (
-              <a key={article.id} href={`/learn/${article.id}`}>
-                <Card className="hover:border-primary/30 transition-all cursor-pointer">
-                  <CardContent className="py-3 flex items-center gap-3">
-                    <GraduationCap className="h-4 w-4 text-primary shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">{article.title}</p>
-                      <p className="text-xs text-muted-foreground">{article.category} &bull; {article.readingTime} min read</p>
+          <div className="grid grid-cols-1 gap-3">
+            {learningTracks.map((track) => (
+              <a key={track.title} href="/learn">
+                <Card className="group relative overflow-hidden hover:border-violet-500/30 transition-all cursor-pointer">
+                  <div className={`absolute left-0 top-0 bottom-0 w-1 bg-gradient-to-b ${track.color}`} />
+                  <CardContent className="py-4 pl-5">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">{track.title}</p>
+                        <p className="text-xs text-muted-foreground">{track.desc}</p>
+                      </div>
+                      <Badge variant="outline" className="text-[10px]">{track.level}</Badge>
                     </div>
-                    <Badge variant="outline" className="shrink-0 text-[10px]">{article.level}</Badge>
                   </CardContent>
                 </Card>
               </a>
@@ -260,9 +264,13 @@ export default function HomePage() {
       </div>
 
       {/* Footer */}
-      <footer className="border-t pt-8 text-center text-sm text-muted-foreground">
-        <p>CommitKit — Free Git & GitHub Developer Platform</p>
-        <p className="mt-1">Built with Next.js, Tailwind CSS, Fuse.js &bull; Deployed on Cloudflare Pages</p>
+      <footer className="border-t border-violet-500/10 pt-8 text-center">
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <Terminal className="h-4 w-4 text-violet-400" />
+          <span className="font-semibold bg-gradient-to-r from-violet-400 to-cyan-400 bg-clip-text text-transparent">CommitKit</span>
+        </div>
+        <p className="text-sm text-muted-foreground">Search Errors. Generate Commands. Master Git.</p>
+        <p className="text-xs text-muted-foreground mt-1">Next.js &bull; Tailwind CSS &bull; Fuse.js &bull; Cloudflare Pages</p>
       </footer>
     </div>
   );
