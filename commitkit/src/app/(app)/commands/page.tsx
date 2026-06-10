@@ -10,9 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { toast } from "@/components/toaster";
-import { interpretNaturalLanguage, generateFolderCommands } from "@/engines/folder-command-engine";
+import { interpretNaturalLanguage, generateFolderCommands } from "@/engines";
 import type { CommandRecipe } from "@/types";
-import type { NaturalLanguageResult, FolderCommandOutput } from "@/engines/folder-command-engine";
+import type { NaturalLanguageResult, FolderCommandOutput } from "@/engines";
 
 const providers = [
   { value: "github", label: "GitHub", icon: GitPullRequest },
