@@ -7,8 +7,6 @@ import { Header } from "@/components/header";
 import { Sidebar } from "@/components/sidebar";
 import { SearchDialog } from "@/components/search-dialog";
 import { Toaster } from "@/components/toaster";
-import { Background3D } from "@/components/background-3d";
-import { ParticleField } from "@/components/particle-field";
 import { cn } from "@/lib/utils";
 
 export function Shell({ children }: { children: React.ReactNode }) {
@@ -33,10 +31,8 @@ export function Shell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex min-h-screen flex-col">
-      <Background3D />
-      <ParticleField />
       <Header onMenuClick={() => setSidebarOpen(!sidebarOpen)} onSearchClick={() => setSearchOpen(true)} />
-      <div className="flex flex-1 relative z-[2]">
+      <div className="flex flex-1">
         <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
         <main className={cn("flex-1 px-4 py-6 md:px-6 lg:px-8 transition-all duration-200", sidebarOpen && "md:ml-64")}>
           <AnimatePresence mode="wait">
