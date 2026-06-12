@@ -29,6 +29,7 @@ export function TiltCard({ children, className = "", tiltDegree = 8, glare = tru
 
     setStyle({
       transform: `perspective(1000px) rotateX(${rotateX}deg) rotateY(${rotateY}deg) scale3d(1.02, 1.02, 1.02)`,
+      transformStyle: "preserve-3d",
       transition: "transform 0.06s ease-out",
     });
 
@@ -44,6 +45,7 @@ export function TiltCard({ children, className = "", tiltDegree = 8, glare = tru
   const handleMouseLeave = () => {
     setStyle({
       transform: "perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)",
+      transformStyle: "preserve-3d",
       transition: "transform 0.5s ease-out",
     });
     setGlareStyle({});
