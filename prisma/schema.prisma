@@ -1,0 +1,339 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  profile             Profile?
+  campaigns           Campaign[]
+  missions            Mission[]
+  xpTransactions      XPTransaction[]
+  userProgress        UserProgress[]
+  userAchievements    UserAchievement[]
+  streaks             Streak[]
+  focusSessions       FocusSession[]
+  focusStatistics     FocusStatistic?
+  notifications       Notification[]
+  audioPreferences    AudioPreference?
+  workspaceProgression WorkspaceProgression?
+  memoryLaneEntries   MemoryLane[]
+  analyticsEvents     AnalyticsEvent[]
+  aiGenerations       AIGeneration[]
+}
+
+model Profile {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  displayName String?
+  avatarUrl String?
+  bio       String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Campaign {
+  id          String   @id @default(uuid())
+  userId      String
+  title       String
+  description String?
+  emoji       String?
+  color       String?
+  status      String   @default("active") // active, completed, archived
+  deadline    DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  missions Mission[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model Mission {
+  id           String    @id @default(uuid())
+  userId       String
+  campaignId   String?
+  title        String
+  description  String?
+  priority     String    @default("medium") // low, medium, high, critical
+  difficulty   String    @default("medium") // easy, medium, hard, legendary
+  status       String    @default("pending") // pending, active, completed, archived
+  deadline     DateTime?
+  estimatedTime Int?     // minutes
+  xpReward     Int       @default(0)
+  category     String?
+  tags         String[]  @default([])
+  dependencies String[]  @default([]) // mission IDs this depends on
+  progress     Int       @default(0) // 0-100
+  order        Int?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  completedAt  DateTime?
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaign Campaign? @relation(fields: [campaignId], references: [id], onDelete: SetNull)
+  subtasks Subtask[]
+
+  @@index([userId])
+  @@index([campaignId])
+  @@index([status])
+  @@index([priority])
+}
+
+model Subtask {
+  id        String   @id @default(uuid())
+  missionId String
+  title     String
+  completed Boolean  @default(false)
+  order     Int?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  mission Mission @relation(fields: [missionId], references: [id], onDelete: Cascade)
+
+  @@index([missionId])
+}
+
+model MissionHistory {
+  id        String   @id @default(uuid())
+  missionId String
+  userId    String
+  action    String   // created, updated, completed, archived, deleted
+  data      Json?
+  createdAt DateTime @default(now())
+
+  @@index([missionId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model XPTransaction {
+  id        String   @id @default(uuid())
+  userId    String
+  amount    Int
+  reason    String   // mission_completed, achievement_unlocked, streak_bonus, focus_bonus, campaign_bonus, daily_bonus
+  referenceId String? // mission_id, achievement_id, etc
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model UserProgress {
+  id        String   @id @default(uuid())
+  userId    String   @unique
+  level     Int      @default(1)
+  totalXP   Int      @default(0)
+  currentXP Int      @default(0) // XP toward next level
+  xpToNextLevel Int  @default(100)
+  totalMissionsCompleted Int @default(0)
+  totalFocusMinutes Int @default(0)
+  longestStreak Int  @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([level])
+}
+
+model Achievement {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  title       String
+  description String?
+  emoji       String?
+  rarity      String   @default("common") // common, rare, epic, legendary
+  xpReward    Int      @default(0)
+  condition   Json?    // condition for unlocking
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userAchievements UserAchievement[]
+}
+
+model UserAchievement {
+  id            String   @id @default(uuid())
+  userId        String
+  achievementId String
+  progress      Int      @default(0) // 0-100
+  unlocked      Boolean  @default(false)
+  unlockedAt    DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@index([userId])
+  @@index([achievementId])
+}
+
+model Streak {
+  id             String   @id @default(uuid())
+  userId         String
+  currentStreak  Int      @default(0)
+  longestStreak  Int      @default(0)
+  lastActivityDate DateTime?
+  streakType     String   @default("daily") // daily, weekly
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, streakType])
+  @@index([userId])
+}
+
+model FocusSession {
+  id           String   @id @default(uuid())
+  userId       String
+  type         String   @default("pomodoro") // pomodoro, custom, deep_focus
+  duration     Int      // minutes (planned)
+  actualDuration Int?   // minutes (actual)
+  completed    Boolean  @default(false)
+  score        Int?     // 0-100 focus score
+  distractions Int      @default(0)
+  environment  String?  // ambient environment used
+  notes        String?
+  startedAt    DateTime
+  endedAt      DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([startedAt])
+}
+
+model FocusStatistic {
+  id            String   @id @default(uuid())
+  userId        String   @unique
+  totalSessions Int      @default(0)
+  totalMinutes  Int      @default(0)
+  averageScore  Float    @default(0)
+  longestSession Int     @default(0)
+  currentStreak Int      @default(0)
+  bestStreak    Int      @default(0)
+  weeklyMinutes Int      @default(0)
+  monthlyMinutes Int     @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String   // achievement, streak, reminder, focus, mission, system
+  title     String
+  message   String?
+  data      Json?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+  @@index([createdAt])
+}
+
+model AudioPreference {
+  id                String   @id @default(uuid())
+  userId            String   @unique
+  masterVolume      Float    @default(0.8)
+  musicVolume       Float    @default(0.7)
+  sfxVolume         Float    @default(0.8)
+  ambientVolume     Float    @default(0.5)
+  voiceVolume       Float    @default(0.8)
+  uiVolume          Float    @default(0.6)
+  focusModeVolume   Float    @default(0.3)
+  activeProfile     String   @default("default")
+  currentEnvironment String?
+  premiumPacks      String[] @default([])
+  customSettings    Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model WorkspaceProgression {
+  id         String   @id @default(uuid())
+  userId     String   @unique
+  level      Int      @default(1)
+  theme      String   @default("neon-dreams") // theme id
+  upgrades   Json?    // unlocked upgrades
+  ambiance   String?  // current ambiance
+  decorations Json?   // placed decorations
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model MemoryLane {
+  id          String   @id @default(uuid())
+  userId      String
+  type        String   // achievement, milestone, campaign_complete, streak_record, major_win
+  title       String
+  description String?
+  metadata    Json?
+  date        DateTime
+  significance Int     @default(1) // 1-10
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+  @@index([date])
+}
+
+model AnalyticsEvent {
+  id        String   @id @default(uuid())
+  userId    String
+  event     String
+  properties Json?
+  timestamp DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, event])
+  @@index([timestamp])
+}
+
+model AIGeneration {
+  id        String   @id @default(uuid())
+  userId    String
+  type      String   // goal_breakdown, mission_gen, campaign_create, weekly_plan, daily_plan, coaching, motivation
+  prompt    String
+  response  String
+  model     String   // gpt-4, claude-3, gemini-pro
+  tokens    Int?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
+}

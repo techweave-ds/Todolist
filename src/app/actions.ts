@@ -1,0 +1,172 @@
+'use server'
+
+import { prisma } from '@/lib/prisma'
+import { missionService } from '@/services/missions/mission-service'
+import { campaignService } from '@/services/campaigns/campaign-service'
+import { createSupabaseServerClient } from '@/lib/supabase-server'
+import { DEMO_USER_ID, DEMO_COOKIE } from '@/lib/demo'
+import { cookies } from 'next/headers'
+
+async function getAuthUserId(): Promise<string> {
+  const cookieStore = await cookies()
+  const isDemo = cookieStore.get(DEMO_COOKIE)?.value === 'true'
+  if (isDemo) return DEMO_USER_ID
+
+  const supabase = await createSupabaseServerClient()
+  const { data: { user }, error } = await supabase.auth.getUser()
+  if (error || !user) throw new Error('Unauthorized')
+  return user.id
+}
+
+export async function createMission(formData: FormData) {
+  const userId = await getAuthUserId()
+  const title = formData.get('title') as string
+  const description = formData.get('description') as string
+  const difficulty = formData.get('difficulty') as string
+  const priority = formData.get('priority') as string
+  const deadline = formData.get('deadline') as string
+  const estimatedTime = formData.get('estimatedTime') as string
+
+  return missionService.create({
+    title,
+    description: description || undefined,
+    difficulty: (difficulty ?? 'medium') as any,
+    priority: (priority ?? 'medium') as any,
+    deadline: deadline || undefined,
+    estimatedTime: estimatedTime ? parseInt(estimatedTime) : undefined,
+  }, userId)
+}
+
+export async function completeMission(missionId: string) {
+  const userId = await getAuthUserId()
+  return missionService.complete(missionId, userId)
+}
+
+export async function deleteMission(missionId: string) {
+  const userId = await getAuthUserId()
+  return missionService.delete(missionId, userId)
+}
+
+export async function createCampaign(formData: FormData) {
+  const userId = await getAuthUserId()
+  const title = formData.get('title') as string
+  return campaignService.create({ title }, userId)
+}
+
+export async function getDashboardData() {
+  const userId = await getAuthUserId()
+  const [missions, progress, streak, focusStats, campaigns, achievements] = await Promise.all([
+    missionService.getTodayMissions(userId),
+    prisma.userProgress.findUnique({ where: { userId } }),
+    prisma.streak.findUnique({ where: { userId_streakType: { userId, streakType: 'daily' } } }),
+    prisma.focusStatistic.findUnique({ where: { userId } }),
+    prisma.campaign.count({ where: { userId, status: 'active' } }),
+    prisma.userAchievement.count({ where: { userId, NOT: { unlockedAt: null } } }),
+  ])
+
+  return { todayMissions: missions, progress, streak, focusStats, activeCampaigns: campaigns, achievementsUnlocked: achievements }
+}
+
+export async function ensureUserProfile(userId: string, displayName?: string) {
+  const existing = await prisma.profile.findUnique({ where: { userId } })
+  if (!existing) {
+    await prisma.profile.create({
+      data: {
+        userId,
+        displayName: displayName || 'User',
+      },
+    })
+  }
+  const progress = await prisma.userProgress.findUnique({ where: { userId } })
+  if (!progress) {
+    await prisma.userProgress.create({
+      data: { userId, totalXP: 0, currentXP: 0, level: 1, xpToNextLevel: 100 },
+    })
+  }
+  const audioPrefs = await prisma.audioPreference.findUnique({ where: { userId } })
+  if (!audioPrefs) {
+    await prisma.audioPreference.create({ data: { userId } })
+  }
+}
+
+export async function startDemo() {
+  const existing = await prisma.user.findUnique({ where: { id: DEMO_USER_ID } })
+  if (!existing) {
+    await prisma.user.create({
+      data: {
+        id: DEMO_USER_ID,
+        email: 'demo@missioncontrol.app',
+      },
+    })
+  }
+  await ensureUserProfile(DEMO_USER_ID, 'Demo Explorer')
+
+  const missionCount = await prisma.mission.count({ where: { userId: DEMO_USER_ID } })
+  if (missionCount === 0) {
+    await prisma.mission.createMany({
+      data: [
+        { id: 'demo-mission-1', userId: DEMO_USER_ID, title: 'Explore the Dashboard', description: 'Get familiar with your mission overview', difficulty: 'easy', priority: 'high', status: 'completed', xpReward: 25, completedAt: new Date() },
+        { id: 'demo-mission-2', userId: DEMO_USER_ID, title: 'Create Your First Campaign', description: 'Start a campaign to group related missions', difficulty: 'medium', priority: 'high', status: 'active', xpReward: 50 },
+        { id: 'demo-mission-3', userId: DEMO_USER_ID, title: 'Complete a Focus Session', description: 'Try a 25-minute pomodoro session', difficulty: 'medium', priority: 'medium', status: 'pending', xpReward: 50 },
+        { id: 'demo-mission-4', userId: DEMO_USER_ID, title: 'Set Up Your Workspace', description: 'Customize your theme and preferences', difficulty: 'easy', priority: 'low', status: 'pending', xpReward: 25 },
+        { id: 'demo-mission-5', userId: DEMO_USER_ID, title: 'Review Your Analytics', description: 'Check your productivity trends', difficulty: 'hard', priority: 'medium', status: 'pending', xpReward: 100 },
+      ],
+    })
+
+    await prisma.campaign.create({
+      data: {
+        id: 'demo-campaign-1',
+        userId: DEMO_USER_ID,
+        title: 'Mission Control Onboarding',
+        description: 'Learn the ropes of the platform',
+        emoji: '🚀',
+        status: 'active',
+        missions: { connect: ['demo-mission-1', 'demo-mission-2', 'demo-mission-3', 'demo-mission-4', 'demo-mission-5'].map(id => ({ id })) },
+      },
+    })
+
+    await prisma.focusSession.create({
+      data: {
+        id: 'demo-focus-1',
+        userId: DEMO_USER_ID,
+        type: 'pomodoro',
+        duration: 25,
+        actualDuration: 22,
+        completed: true,
+        score: 85,
+        startedAt: new Date(Date.now() - 86400000),
+      },
+    })
+
+    await prisma.focusStatistic.upsert({
+      where: { userId: DEMO_USER_ID },
+      create: { userId: DEMO_USER_ID, totalSessions: 1, totalMinutes: 22, averageScore: 85, longestSession: 22 },
+      update: {},
+    })
+
+    const achievements = await prisma.achievement.findMany()
+    for (const a of achievements) {
+      if (a.key === 'first_mission') {
+        await prisma.userAchievement.upsert({
+          where: { userId_achievementId: { userId: DEMO_USER_ID, achievementId: a.id } },
+          create: { userId: DEMO_USER_ID, achievementId: a.id, unlocked: true, unlockedAt: new Date(), progress: 100 },
+          update: {},
+        })
+      } else {
+        await prisma.userAchievement.upsert({
+          where: { userId_achievementId: { userId: DEMO_USER_ID, achievementId: a.id } },
+          create: { userId: DEMO_USER_ID, achievementId: a.id, progress: 0 },
+          update: {},
+        })
+      }
+    }
+  }
+
+  const cookieStore = await cookies()
+  cookieStore.set(DEMO_COOKIE, 'true', { path: '/', maxAge: 60 * 60 * 24 })
+}
+
+export async function endDemo() {
+  const cookieStore = await cookies()
+  cookieStore.delete(DEMO_COOKIE)
+}

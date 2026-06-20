@@ -1,0 +1,1593 @@
+diff -ruN '--exclude=.git' '--exclude=node_modules' '--exclude=.next' .env.example .env.example
+--- .env.example	2026-06-20 12:01:18.439199963 +0000
++++ .env.example	2026-06-20 12:09:43.113205196 +0000
+@@ -13,6 +13,8 @@
+ # === Optional ===
+ 
+ # AI Providers
++# FREE — Groq (llama-3.1-8b-instant, no credit card needed): https://console.groq.com
++GROQ_API_KEY=gsk_your_groq_api_key
+ OPENAI_API_KEY=sk-your-openai-api-key
+ ANTHROPIC_API_KEY=sk-ant-your-anthropic-api-key
+ GEMINI_API_KEY=your-gemini-api-key
+diff -ruN '--exclude=.git' '--exclude=node_modules' '--exclude=.next' DEPLOY.md DEPLOY.md
+--- DEPLOY.md	1970-01-01 00:00:00.000000000 +0000
++++ DEPLOY.md	2026-06-20 12:09:58.611188065 +0000
+@@ -0,0 +1,57 @@
++# Mission Control OS — Free Deployment Guide
++
++## Stack (All Free)
++- **Railway** — Next.js app + PostgreSQL (free tier, $5 credit)
++- **Supabase** — Auth (free tier, unlimited)
++- **Groq** — AI (free tier, llama-3.1-8b-instant, no CC)
++
++---
++
++## Step 1: Supabase Auth (5 min)
++1. Create project at https://supabase.com
++2. Go to Settings → API
++3. Copy `Project URL` → `NEXT_PUBLIC_SUPABASE_URL`
++4. Copy `anon public` key → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
++5. Settings → Authentication → Enable Email, Google (optional), GitHub (optional)
++
++## Step 2: Groq AI (2 min, FREE)
++1. Sign up at https://console.groq.com (no credit card)
++2. API Keys → Create key
++3. Copy key → `GROQ_API_KEY`
++
++## Step 3: Railway Deploy (10 min)
++1. Push this repo to GitHub
++2. Go to https://railway.app → New Project → Deploy from GitHub
++3. Add PostgreSQL plugin
++4. Set env vars:
++   ```
++   DATABASE_URL        = (auto-provided by Railway PostgreSQL plugin)
++   NEXT_PUBLIC_SUPABASE_URL    = your supabase url
++   NEXT_PUBLIC_SUPABASE_ANON_KEY = your supabase anon key
++   NEXT_PUBLIC_APP_URL = https://your-app.up.railway.app
++   GROQ_API_KEY        = gsk_...
++   ```
++5. Railway auto-runs `prisma migrate deploy` + `prisma db seed` via `package.json` build script
++
++## Step 4: Test Demo Mode
++- Visit your Railway URL
++- Click **Try Demo — No Sign Up Required**
++- Should land on dashboard with pre-seeded data
++- Test: Create mission, complete it, check achievements, try Focus timer, open AI Coach
++
++---
++
++## Features Working in Free Tier
++- ✅ Demo mode (no auth needed)
++- ✅ Full mission CRUD
++- ✅ Campaigns
++- ✅ Focus timer + ambient audio (Web Audio API, no files)
++- ✅ Achievements + XP system
++- ✅ AI features (Groq — briefing, coach, goal breakdown, weekly plan)
++- ✅ GlowBackground canvas
++- ✅ ASMR ambients: Bubble Pop 🫧, Lo-Fi Vinyl 🎵, Rain 🌧️, Forest 🌲, etc.
++
++## What Requires Upgrade
++- Email sending (Resend) — for magic link auth
++- Sentry error tracking — optional
++- PostHog analytics — optional
+diff -ruN '--exclude=.git' '--exclude=node_modules' '--exclude=.next' src/ai/ai-engine.ts src/ai/ai-engine.ts
+--- src/ai/ai-engine.ts	2026-06-20 12:01:18.452041231 +0000
++++ src/ai/ai-engine.ts	2026-06-20 12:06:31.808834178 +0000
+@@ -2,17 +2,30 @@
+ import { OpenAIProvider } from "./providers/openai-provider";
+ import { AnthropicProvider } from "./providers/anthropic-provider";
+ import { GeminiProvider } from "./providers/gemini-provider";
++import { GroqProvider } from "./providers/groq-provider";
+ import type { AiGenerationRequest, AiGenerationResponse, AiProvider, AiBreakdownResult, AiBreakdownMission, AiPlanResult } from "@/core/types/ai";
+ import { prismaErrorHandler } from "@/lib/service-error";
+ 
+ export class AIEngine {
+   private providers: Map<string, AiProvider> = new Map();
+-  private defaultProvider: string = "openai";
++  private defaultProvider: string = "groq";
+ 
+   constructor() {
++    this.registerProvider(new GroqProvider());
+     this.registerProvider(new OpenAIProvider());
+     this.registerProvider(new AnthropicProvider());
+     this.registerProvider(new GeminiProvider());
++
++    // Fallback chain: groq -> openai -> anthropic -> gemini
++    if (process.env.GROQ_API_KEY) {
++      this.defaultProvider = "groq";
++    } else if (process.env.OPENAI_API_KEY) {
++      this.defaultProvider = "openai";
++    } else if (process.env.ANTHROPIC_API_KEY) {
++      this.defaultProvider = "anthropic";
++    } else if (process.env.GOOGLE_AI_API_KEY) {
++      this.defaultProvider = "gemini";
++    }
+   }
+ 
+   registerProvider(provider: AiProvider): void {
+diff -ruN '--exclude=.git' '--exclude=node_modules' '--exclude=.next' src/ai/providers/groq-provider.ts src/ai/providers/groq-provider.ts
+--- src/ai/providers/groq-provider.ts	1970-01-01 00:00:00.000000000 +0000
++++ src/ai/providers/groq-provider.ts	2026-06-20 12:06:15.091193178 +0000
+@@ -0,0 +1,59 @@
++import type { AiProvider, AiGenerationRequest, AiGenerationResponse } from '@/core/types/ai'
++
++export class GroqProvider implements AiProvider {
++  name = 'groq'
++  private apiKey: string
++
++  constructor() {
++    this.apiKey = process.env.GROQ_API_KEY || ''
++  }
++
++  isAvailable(): boolean {
++    return !!this.apiKey
++  }
++
++  async generate(request: AiGenerationRequest): Promise<AiGenerationResponse> {
++    if (!this.apiKey) throw new Error('Groq API key not configured')
++
++    const messages: { role: string; content: string }[] = []
++
++    if (request.system) {
++      messages.push({ role: 'system', content: request.system })
++    }
++
++    if (request.messages) {
++      messages.push(...request.messages.map((m: any) => ({ role: m.role, content: m.content })))
++    } else if (request.prompt) {
++      messages.push({ role: 'user', content: request.prompt })
++    }
++
++    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
++      method: 'POST',
++      headers: {
++        'Content-Type': 'application/json',
++        Authorization: `Bearer ${this.apiKey}`,
++      },
++      body: JSON.stringify({
++        model: 'llama-3.1-8b-instant',
++        messages,
++        max_tokens: request.maxTokens || 800,
++        temperature: request.temperature ?? 0.7,
++      }),
++    })
++
++    if (!res.ok) {
++      const err = await res.text()
++      throw new Error(`Groq error ${res.status}: ${err}`)
++    }
++
++    const data = await res.json()
++    const content = data.choices?.[0]?.message?.content || ''
++    const tokens = data.usage?.total_tokens
++
++    return {
++      content,
++      model: 'groq/llama-3.1-8b-instant',
++      tokens,
++    }
++  }
++}
+diff -ruN '--exclude=.git' '--exclude=node_modules' '--exclude=.next' src/app/(app)/dashboard/page.tsx src/app/(app)/dashboard/page.tsx
+--- src/app/(app)/dashboard/page.tsx	2026-06-20 12:01:18.453805021 +0000
++++ src/app/(app)/dashboard/page.tsx	2026-06-20 12:08:16.559190400 +0000
+@@ -5,17 +5,19 @@
+ import { useMissionStore } from '@/store/mission-store'
+ import { useXPStore } from '@/store/xp-store'
+ import { useAIStore } from '@/store/ai-store'
+-import { Target, Flame, Brain, Trophy, Zap, Calendar, Sparkles, MessageSquare } from 'lucide-react'
++import { Target, Flame, Brain, Trophy, Calendar, Sparkles, MessageSquare } from 'lucide-react'
+ import { formatRelativeDate } from '@/lib/utils'
+ import { DailyBriefing } from '@/components/ai/daily-briefing'
+ import { WeeklyPlanner } from '@/components/ai/weekly-planner'
+ import { AICoach } from '@/components/ai/ai-coach'
+ import { GoalBreakdown } from '@/components/ai/goal-breakdown'
++import { MissionHero } from '@/components/dashboard/mission-hero'
++import { CommanderProfile } from '@/components/dashboard/commander-profile'
+ 
+ export default function DashboardPage() {
+-  const { dashboardStats, fetchDashboardStats, userId } = useAppStore()
+-  const { missions } = useMissionStore()
+-  const { level, currentXP, xpToNextLevel, progress, fetchLevelInfo } = useXPStore()
++  const { dashboardStats, fetchDashboardStats, userId, isLoading } = useAppStore()
++  const { missions, fetchMissions } = useMissionStore()
++  const { fetchLevelInfo } = useXPStore()
+   const { getMotivation, motivation } = useAIStore()
+   const [coachOpen, setCoachOpen] = useState(false)
+   const [goalOpen, setGoalOpen] = useState(false)
+@@ -25,7 +27,8 @@
+     fetchDashboardStats(userId)
+     fetchLevelInfo(userId)
+     getMotivation(userId)
+-  }, [userId, fetchDashboardStats, fetchLevelInfo, getMotivation])
++    fetchMissions(userId)
++  }, [userId, fetchDashboardStats, fetchLevelInfo, getMotivation, fetchMissions])
+ 
+   const stats = dashboardStats
+ 
+@@ -36,43 +39,46 @@
+     { label: 'Achievements', href: '/achievements', icon: Trophy, color: 'from-yellow-500 to-pink-500' },
+   ]
+ 
++  const activeMissions = missions.filter(m => m.status === 'pending' || m.status === 'active')
++  const completedToday = missions.filter(m => {
++    if (m.status !== 'completed' || !m.completedAt) return false
++    const d = new Date(m.completedAt)
++    const now = new Date()
++    return d.toDateString() === now.toDateString()
++  }).length
++
+   return (
+     <div className="space-y-6 animate-slide-up">
+-      <div className="flex items-center justify-between">
+-        <div>
+-          <h1 className="text-2xl font-bold">Dashboard</h1>
+-          <p className="text-sm text-muted-foreground">Your command center</p>
+-        </div>
+-        <div className="flex items-center gap-2">
+-          <button
+-            onClick={() => setGoalOpen(true)}
+-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary/10 text-primary text-xs font-medium hover:bg-primary/20 transition-colors"
+-          >
+-            <Sparkles className="w-3.5 h-3.5" />
+-            Break Down Goal
+-          </button>
+-          <button
+-            onClick={() => setCoachOpen(true)}
+-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg glass text-xs font-medium hover:bg-muted/50 transition-colors"
+-          >
+-            <MessageSquare className="w-3.5 h-3.5" />
+-            AI Coach
+-          </button>
+-          <div className="flex items-center gap-3 glass rounded-xl px-4 py-2">
+-            <div className="flex items-center gap-2">
+-              <Zap className="w-4 h-4 text-yellow-500" />
+-              <span className="text-sm font-medium">Level {level}</span>
+-            </div>
+-            <div className="w-24 h-1.5 rounded-full bg-muted overflow-hidden">
+-              <div className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all" style={{ width: `${progress}%` }} />
+-            </div>
+-            <span className="text-xs text-muted-foreground">{currentXP}/{xpToNextLevel} XP</span>
+-          </div>
+-        </div>
++      {/* MissionHero */}
++      <MissionHero
++        missions={missions}
++        streak={stats?.dailyStreak || 0}
++        focusSessions={stats?.focusSessions || 0}
++        completedToday={completedToday}
++        recentXP={stats?.recentXP || 0}
++      />
++
++      {/* Action row */}
++      <div className="flex items-center gap-3">
++        <button
++          onClick={() => setGoalOpen(true)}
++          className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-primary/10 text-primary text-sm font-medium hover:bg-primary/20 transition-colors"
++        >
++          <Sparkles className="w-4 h-4" />
++          Break Down Goal
++        </button>
++        <button
++          onClick={() => setCoachOpen(true)}
++          className="flex items-center gap-1.5 px-4 py-2 rounded-lg glass text-sm font-medium hover:bg-muted/50 transition-colors"
++        >
++          <MessageSquare className="w-4 h-4" />
++          AI Coach
++        </button>
+       </div>
+ 
++      {/* AI Motivation */}
+       {motivation && (
+-        <div className="glass rounded-xl p-4 bg-gradient-to-br from-primary/5 to-accent/5 border-primary/10">
++        <div className="glass rounded-xl p-4 bg-gradient-to-br from-primary/5 to-accent/5 border border-primary/10">
+           <div className="flex items-start gap-3">
+             <Sparkles className="w-5 h-5 text-primary shrink-0 mt-0.5" />
+             <p className="text-sm italic text-muted-foreground leading-relaxed">&ldquo;{motivation}&rdquo;</p>
+@@ -80,6 +86,7 @@
+         </div>
+       )}
+ 
++      {/* Quick Actions */}
+       <div className="grid grid-cols-4 gap-4">
+         {quickActions.map((action) => {
+           const Icon = action.icon
+@@ -93,87 +100,98 @@
+                 <Icon className="w-5 h-5 text-white" />
+               </div>
+               <p className="text-sm font-medium">{action.label}</p>
++              {/* Hover underline */}
++              <div className="mt-2 h-0.5 rounded-full overflow-hidden">
++                <div className="h-full w-0 group-hover:w-full bg-primary/30 transition-all duration-500" />
++              </div>
+             </a>
+           )
+         })}
+       </div>
+ 
++      {/* Stat Cards */}
+       <div className="grid grid-cols-4 gap-4">
+-        <div className="glass rounded-xl p-4">
+-          <div className="flex items-center gap-2 mb-1">
+-            <Target className="w-4 h-4 text-primary" />
+-            <span className="text-xs text-muted-foreground">Today&apos;s Missions</span>
+-          </div>
+-          <p className="text-2xl font-bold">{stats?.todayMissions || 0}</p>
+-        </div>
+-        <div className="glass rounded-xl p-4">
+-          <div className="flex items-center gap-2 mb-1">
+-            <Flame className="w-4 h-4 text-orange-500" />
+-            <span className="text-xs text-muted-foreground">Streak</span>
+-          </div>
+-          <p className="text-2xl font-bold">{stats?.dailyStreak || 0} days</p>
+-        </div>
+-        <div className="glass rounded-xl p-4">
+-          <div className="flex items-center gap-2 mb-1">
+-            <Brain className="w-4 h-4 text-green-500" />
+-            <span className="text-xs text-muted-foreground">Focus Score</span>
+-          </div>
+-          <p className="text-2xl font-bold">{stats?.focusScore || 0}</p>
+-        </div>
+-        <div className="glass rounded-xl p-4">
+-          <div className="flex items-center gap-2 mb-1">
+-            <Trophy className="w-4 h-4 text-yellow-500" />
+-            <span className="text-xs text-muted-foreground">Achievements</span>
++        {[
++          { icon: Target, color: 'text-primary', label: "Today's Missions", value: stats?.todayMissions ?? '—' },
++          { icon: Flame, color: 'text-orange-500', label: 'Streak', value: stats?.dailyStreak ? `${stats.dailyStreak}d` : '—' },
++          { icon: Brain, color: 'text-green-500', label: 'Focus Score', value: stats?.focusScore ?? '—' },
++          { icon: Trophy, color: 'text-yellow-500', label: 'Achievements', value: stats?.recentAchievements?.length ?? '—' },
++        ].map(({ icon: Icon, color, label, value }) => (
++          <div key={label} className="glass rounded-xl p-4 group overflow-hidden relative">
++            <div className="flex items-center gap-2 mb-1">
++              <Icon className={`w-4 h-4 ${color}`} />
++              <span className="text-xs text-muted-foreground">{label}</span>
++            </div>
++            {isLoading ? (
++              <div className="h-8 w-12 bg-muted rounded animate-pulse mt-1" />
++            ) : (
++              <p className="text-2xl font-bold tabular-nums">{value}</p>
++            )}
++            <div className="absolute bottom-0 left-0 h-0.5 w-0 group-hover:w-full bg-primary/30 transition-all duration-500" />
+           </div>
+-          <p className="text-2xl font-bold">{stats?.recentAchievements?.length || 0}</p>
+-        </div>
++        ))}
+       </div>
+ 
+-      <div className="grid grid-cols-3 gap-6">
+-        <div className="col-span-2 space-y-6">
++      {/* 3:1 Content Split */}
++      <div className="grid grid-cols-4 gap-6">
++        <div className="col-span-3 space-y-6">
+           <DailyBriefing />
+ 
++          {/* Active Missions */}
+           <div className="glass rounded-xl p-4">
+-            <h2 className="text-sm font-medium mb-3">Today&apos;s Missions</h2>
+-            {missions.filter(m => m.status === 'pending' || m.status === 'active').slice(0, 5).map((mission) => (
+-              <div key={mission.id} className="flex items-center gap-3 py-2 border-b last:border-0">
+-                <div className={`w-2 h-2 rounded-full ${
+-                  mission.priority === 'critical' ? 'bg-red-500' :
+-                  mission.priority === 'high' ? 'bg-orange-500' :
+-                  mission.priority === 'medium' ? 'bg-yellow-500' : 'bg-green-500'
+-                }`} />
+-                <span className="text-sm flex-1 truncate">{mission.title}</span>
+-                {mission.deadline && (
+-                  <span className="text-xs text-muted-foreground">{formatRelativeDate(mission.deadline)}</span>
+-                )}
+-              </div>
+-            ))}
+-            {missions.filter(m => m.status === 'pending' || m.status === 'active').length === 0 && (
+-              <p className="text-sm text-muted-foreground py-4 text-center">No pending missions</p>
++            <div className="flex items-center justify-between mb-3">
++              <h2 className="text-sm font-medium">Active Missions</h2>
++              <span className="text-xs text-muted-foreground">{activeMissions.length} active</span>
++            </div>
++            {activeMissions.slice(0, 5).length > 0 ? (
++              activeMissions.slice(0, 5).map((mission) => (
++                <div key={mission.id} className="flex items-center gap-3 py-2 border-b border-border/50 last:border-0">
++                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
++                    mission.priority === 'critical' ? 'bg-red-500 animate-pulse-glow' :
++                    mission.priority === 'high' ? 'bg-orange-500' :
++                    mission.priority === 'medium' ? 'bg-yellow-500' : 'bg-green-500'
++                  }`} />
++                  <span className="text-sm flex-1 truncate">{mission.title}</span>
++                  <span className="text-[10px] text-primary font-medium flex-shrink-0">+{mission.xpReward} XP</span>
++                  {mission.deadline && (
++                    <span className="text-xs text-muted-foreground flex-shrink-0">{formatRelativeDate(mission.deadline)}</span>
++                  )}
++                </div>
++              ))
++            ) : (
++              <p className="text-sm text-muted-foreground py-4 text-center">
++                No pending missions — all clear, Commander.
++              </p>
+             )}
+           </div>
+ 
++          {/* Campaign Progress */}
+           <div className="glass rounded-xl p-4">
+             <h2 className="text-sm font-medium mb-3">Campaign Progress</h2>
+-            {stats?.campaignProgress?.map((camp: any) => (
+-              <div key={camp.id} className="mb-3 last:mb-0">
+-                <div className="flex items-center justify-between mb-1">
+-                  <span className="text-sm">{camp.emoji} {camp.title}</span>
+-                  <span className="text-xs text-muted-foreground">{camp.completed}/{camp.total}</span>
+-                </div>
+-                <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
+-                  <div className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all" style={{ width: `${camp.completed / Math.max(camp.total, 1) * 100}%` }} />
++            {stats?.campaignProgress?.length > 0 ? (
++              stats.campaignProgress.map((camp: any) => (
++                <div key={camp.id} className="mb-3 last:mb-0">
++                  <div className="flex items-center justify-between mb-1">
++                    <span className="text-sm">{camp.emoji} {camp.title}</span>
++                    <span className="text-xs text-muted-foreground tabular-nums">{camp.completed}/{camp.total}</span>
++                  </div>
++                  <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
++                    <div
++                      className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all duration-700"
++                      style={{ width: `${camp.total > 0 ? (camp.completed / camp.total) * 100 : 0}%` }}
++                    />
++                  </div>
+                 </div>
+-              </div>
+-            ))}
+-            {(!stats?.campaignProgress || stats.campaignProgress.length === 0) && (
++              ))
++            ) : (
+               <p className="text-sm text-muted-foreground py-4 text-center">No active campaigns</p>
+             )}
+           </div>
+         </div>
+ 
+-        <div className="space-y-6">
+-          <WeeklyPlanner />
++        {/* Right sidebar */}
++        <div className="col-span-1 space-y-6">
++          <CommanderProfile />
+ 
+           <div className="glass rounded-xl p-4">
+             <h2 className="text-sm font-medium mb-3">Recent Achievements</h2>
+@@ -185,10 +203,12 @@
+                 </div>
+               ))}
+               {(!stats?.recentAchievements || stats.recentAchievements.length === 0) && (
+-                <p className="text-sm text-muted-foreground py-2">No achievements yet</p>
++                <p className="text-xs text-muted-foreground py-2">Complete missions to earn achievements.</p>
+               )}
+             </div>
+           </div>
++
++          <WeeklyPlanner />
+         </div>
+       </div>
+ 
+diff -ruN '--exclude=.git' '--exclude=node_modules' '--exclude=.next' src/app/(app)/layout.tsx src/app/(app)/layout.tsx
+--- src/app/(app)/layout.tsx	2026-06-20 12:01:18.453805021 +0000
++++ src/app/(app)/layout.tsx	2026-06-20 12:04:34.101036129 +0000
+@@ -2,6 +2,7 @@
+ import { Header } from '@/components/layout/header'
+ import { CommandPalette } from '@/components/layout/command-palette'
+ import { SessionInitializer } from '@/components/auth/session-initializer'
++import { GlowBackground } from '@/components/ui/glow-background'
+ 
+ export default function AppLayout({
+   children,
+@@ -10,10 +11,11 @@
+ }) {
+   return (
+     <div className="min-h-screen">
++      <GlowBackground />
+       <SessionInitializer />
+       <Sidebar />
+       <Header />
+-      <main className="pl-64 pt-16 min-h-screen">
++      <main className="pl-64 pt-16 min-h-screen relative z-10">
+         <div className="p-6 max-w-7xl mx-auto">
+           {children}
+         </div>
+diff -ruN '--exclude=.git' '--exclude=node_modules' '--exclude=.next' src/app/(app)/missions/page.tsx src/app/(app)/missions/page.tsx
+--- src/app/(app)/missions/page.tsx	2026-06-20 12:01:18.453805021 +0000
++++ src/app/(app)/missions/page.tsx	2026-06-20 12:07:39.139191256 +0000
+@@ -3,9 +3,10 @@
+ import { useState, useEffect } from 'react'
+ import { useMissionStore } from '@/store/mission-store'
+ import { useAppStore } from '@/store/app-store'
+-import { Plus, MoreHorizontal, Calendar, Clock, Sparkles } from 'lucide-react'
++import { Plus, MoreHorizontal, Calendar, Clock, Sparkles, Target } from 'lucide-react'
+ import { formatRelativeDate } from '@/lib/utils'
+ import { GoalBreakdown } from '@/components/ai/goal-breakdown'
++import { EmptyState } from '@/components/ui/empty-state'
+ 
+ const priorityColors: Record<string, string> = {
+   critical: 'bg-red-500',
+@@ -22,7 +23,7 @@
+ }
+ 
+ export default function MissionsPage() {
+-  const { missions, isLoading, createMission, completeMission, deleteMission } = useMissionStore()
++  const { missions, isLoading, fetchMissions, createMission, completeMission, deleteMission } = useMissionStore()
+   const { userId } = useAppStore()
+   const [showCreate, setShowCreate] = useState(false)
+   const [showGoalBreakdown, setShowGoalBreakdown] = useState(false)
+@@ -31,12 +32,15 @@
+   const [description, setDescription] = useState('')
+   const [priority, setPriority] = useState<string>('medium')
+   const [difficulty, setDifficulty] = useState<string>('medium')
++  const [flashId, setFlashId] = useState<string | null>(null)
++
++  useEffect(() => {
++    if (userId) fetchMissions(userId)
++  }, [userId, fetchMissions])
+ 
+   useEffect(() => {
+     const params = new URLSearchParams(window.location.search)
+-    if (params.get('create') === 'true') {
+-      setShowCreate(true)
+-    }
++    if (params.get('create') === 'true') setShowCreate(true)
+   }, [])
+ 
+   const filteredMissions = missions.filter(m => {
+@@ -49,19 +53,26 @@
+ 
+   const handleCreate = async (e: React.FormEvent) => {
+     e.preventDefault()
+-    if (!userId) return
++    if (!userId || !title.trim()) return
+     await createMission({ title, description, priority: priority as any, difficulty: difficulty as any }, userId)
+     setTitle('')
+     setDescription('')
+     setShowCreate(false)
+   }
+ 
++  const handleComplete = async (id: string) => {
++    if (!userId) return
++    await completeMission(id, userId)
++    setFlashId(id)
++    setTimeout(() => setFlashId(null), 1200)
++  }
++
+   return (
+     <div className="space-y-6 animate-slide-up">
+       <div className="flex items-center justify-between">
+         <div>
+           <h1 className="text-2xl font-bold">Missions</h1>
+-          <p className="text-sm text-muted-foreground">Manage your tasks</p>
++          <p className="text-sm text-muted-foreground">Deploy and track your objectives</p>
+         </div>
+         <div className="flex items-center gap-3">
+           <div className="flex items-center gap-1 glass rounded-lg p-1">
+@@ -97,7 +108,7 @@
+       <GoalBreakdown open={showGoalBreakdown} onClose={() => setShowGoalBreakdown(false)} />
+ 
+       {showCreate && (
+-        <form onSubmit={handleCreate} className="glass rounded-xl p-4 animate-slide-up">
++        <form onSubmit={handleCreate} className="glass rounded-xl p-4 animate-slide-down border border-primary/20">
+           <div className="space-y-3">
+             <input
+               value={title}
+@@ -109,10 +120,10 @@
+             <textarea
+               value={description}
+               onChange={e => setDescription(e.target.value)}
+-              placeholder="Description (optional)"
++              placeholder="Briefing / description (optional)"
+               className="w-full px-3 py-2 rounded-lg bg-muted/50 border outline-none focus:ring-2 focus:ring-primary/50 text-sm resize-none h-20"
+             />
+-            <div className="flex gap-3">
++            <div className="flex gap-3 flex-wrap">
+               <select
+                 value={priority}
+                 onChange={e => setPriority(e.target.value)}
+@@ -121,20 +132,20 @@
+                 <option value="low">Low Priority</option>
+                 <option value="medium">Medium Priority</option>
+                 <option value="high">High Priority</option>
+-                <option value="critical">Critical</option>
++                <option value="critical">⚠️ Critical</option>
+               </select>
+               <select
+                 value={difficulty}
+                 onChange={e => setDifficulty(e.target.value)}
+                 className="px-3 py-2 rounded-lg bg-muted/50 border outline-none text-sm"
+               >
+-                <option value="easy">Easy</option>
+-                <option value="medium">Medium</option>
+-                <option value="hard">Hard</option>
+-                <option value="legendary">Legendary</option>
++                <option value="easy">Easy (+25 XP)</option>
++                <option value="medium">Medium (+50 XP)</option>
++                <option value="hard">Hard (+100 XP)</option>
++                <option value="legendary">Legendary (+250 XP)</option>
+               </select>
+-              <button type="submit" className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium">
+-                Create
++              <button type="submit" disabled={!title.trim()} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50">
++                Deploy Mission
+               </button>
+               <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2 rounded-lg text-sm text-muted-foreground hover:text-foreground">
+                 Cancel
+@@ -146,33 +157,73 @@
+ 
+       <div className="space-y-2">
+         {isLoading ? (
+-          <div className="text-center py-12 text-muted-foreground">Loading missions...</div>
+-        ) : filteredMissions.length === 0 ? (
+-          <div className="text-center py-12">
+-            <p className="text-muted-foreground">No missions found</p>
+-            <button onClick={() => setShowCreate(true)} className="mt-2 text-sm text-primary hover:underline">Create your first mission</button>
++          <div className="space-y-2">
++            {[1, 2, 3].map(i => (
++              <div key={i} className="glass rounded-xl p-4 animate-pulse">
++                <div className="flex items-center gap-3">
++                  <div className="w-5 h-5 rounded-full bg-muted" />
++                  <div className="flex-1 space-y-2">
++                    <div className="h-4 bg-muted rounded w-1/3" />
++                    <div className="h-3 bg-muted rounded w-1/2" />
++                  </div>
++                </div>
++              </div>
++            ))}
+           </div>
++        ) : filteredMissions.length === 0 ? (
++          <EmptyState
++            icon={<Target className="w-12 h-12" />}
++            title={filter === 'all' ? 'No missions deployed' : `No ${filter} missions`}
++            description={
++              filter === 'all'
++                ? 'Your mission queue is empty. Intelligence reports no active objectives. Deploy your first mission to begin your campaign.'
++                : `No ${filter} missions at this time. Adjust your filter or create a new mission.`
++            }
++            action={
++              filter === 'all' ? (
++                <button
++                  onClick={() => setShowCreate(true)}
++                  className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
++                >
++                  Deploy Mission
++                </button>
++              ) : undefined
++            }
++          />
+         ) : (
+           filteredMissions.map((mission) => (
+-            <div key={mission.id} className="glass rounded-xl p-4 mission-card">
++            <div
++              key={mission.id}
++              className={`glass rounded-xl p-4 mission-card transition-all ${
++                flashId === mission.id ? 'border-emerald-500/50 bg-emerald-500/5' : ''
++              }`}
++            >
+               <div className="flex items-start gap-3">
+                 <button
+-                  onClick={() => userId && completeMission(mission.id, userId)}
+-                  className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
++                  onClick={() => handleComplete(mission.id)}
++                  disabled={mission.status === 'completed'}
++                  className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all ${
+                     mission.status === 'completed'
+                       ? 'border-primary bg-primary text-primary-foreground'
+-                      : 'border-muted-foreground hover:border-primary'
++                      : 'border-muted-foreground hover:border-primary hover:scale-110'
+                   }`}
+                 >
+                   {mission.status === 'completed' && <span className="text-[10px]">✓</span>}
+                 </button>
+                 <div className="flex-1 min-w-0">
+-                  <div className="flex items-center gap-2">
++                  <div className="flex items-center gap-2 flex-wrap">
+                     <span className={`text-sm font-medium ${mission.status === 'completed' ? 'line-through text-muted-foreground' : ''}`}>
+                       {mission.title}
+                     </span>
+-                    <span className={`w-2 h-2 rounded-full ${priorityColors[mission.priority] || 'bg-gray-500'}`} />
+-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{difficultyLabels[mission.difficulty] || mission.difficulty}</span>
++                    <span
++                      className={`w-2 h-2 rounded-full flex-shrink-0 ${priorityColors[mission.priority] || 'bg-gray-500'} ${
++                        mission.priority === 'critical' ? 'animate-pulse-glow' : ''
++                      }`}
++                    />
++                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
++                      {difficultyLabels[mission.difficulty] || mission.difficulty}
++                    </span>
++                    <span className="text-[10px] text-primary font-medium ml-auto">+{mission.xpReward} XP</span>
+                   </div>
+                   {mission.description && (
+                     <p className="text-xs text-muted-foreground mt-1 line-clamp-1">{mission.description}</p>
+@@ -190,10 +241,13 @@
+                         {mission.estimatedTime}m
+                       </span>
+                     )}
+-                    <span className="text-[10px] text-primary font-medium">+{mission.xpReward} XP</span>
+                   </div>
+                 </div>
+-                <button onClick={() => userId && deleteMission(mission.id, userId)} className="p-1 rounded hover:bg-muted/50 transition-colors">
++                <button
++                  onClick={() => userId && deleteMission(mission.id, userId)}
++                  className="p-1 rounded hover:bg-red-500/10 hover:text-red-400 transition-colors"
++                  title="Scrub mission"
++                >
+                   <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+                 </button>
+               </div>
+diff -ruN '--exclude=.git' '--exclude=node_modules' '--exclude=.next' src/app/(app)/workspace/page.tsx src/app/(app)/workspace/page.tsx
+--- src/app/(app)/workspace/page.tsx	1970-01-01 00:00:00.000000000 +0000
++++ src/app/(app)/workspace/page.tsx	2026-06-20 12:09:22.696066754 +0000
+@@ -0,0 +1,93 @@
++'use client'
++
++import { useEffect, useState } from 'react'
++import { WorkspaceCanvas } from '@/components/workspace/workspace-canvas'
++import { useAppStore } from '@/store/app-store'
++import { Sparkles, Zap, Palette, Unlock, RotateCcw } from 'lucide-react'
++
++export default function WorkspacePage() {
++  const { dashboardStats, fetchDashboardStats, userId } = useAppStore()
++  const [theme, setTheme] = useState('neon-dreams')
++
++  useEffect(() => {
++    if (!userId) return
++    fetchDashboardStats(userId)
++  }, [userId, fetchDashboardStats])
++
++  const level = dashboardStats?.level || 1
++  const totalXP = dashboardStats?.totalXP || 0
++
++  return (
++    <div className="space-y-6 animate-slide-up">
++      <div className="flex items-center justify-between">
++        <div>
++          <h1 className="text-2xl font-bold">Workspace</h1>
++          <p className="text-sm text-muted-foreground">Your 3D command center — Level {level}</p>
++        </div>
++        <div className="flex items-center gap-2">
++          <span className="text-xs text-muted-foreground">{totalXP.toLocaleString()} XP</span>
++          <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-muted/50">
++            <Zap className="w-3 h-3 text-yellow-500" />
++            <span className="text-xs font-medium">Lv.{level}</span>
++          </div>
++        </div>
++      </div>
++
++      <div className="h-[400px] glass rounded-2xl overflow-hidden">
++        <WorkspaceCanvas level={level} theme={theme} />
++      </div>
++
++      <div className="grid grid-cols-4 gap-4">
++        <div className="glass rounded-xl p-4">
++          <div className="flex items-center gap-2 mb-1">
++            <Palette className="w-4 h-4 text-primary" />
++            <span className="text-xs text-muted-foreground">Theme</span>
++          </div>
++          <div className="flex gap-1 mt-2">
++            {['neon-dreams', 'deep-space', 'aurora', 'cyber'].map(t => (
++              <button
++                key={t}
++                onClick={() => setTheme(t)}
++                className={`w-6 h-6 rounded-full transition-all ${theme === t ? 'ring-2 ring-primary scale-110' : ''}`}
++                style={{
++                  background: t === 'neon-dreams' ? 'linear-gradient(135deg, #8B5CF6, #EC4899)' :
++                              t === 'deep-space' ? 'linear-gradient(135deg, #3730A3, #1E40AF)' :
++                              t === 'aurora' ? 'linear-gradient(135deg, #10B981, #3B82F6)' :
++                              'linear-gradient(135deg, #EC4899, #F59E0B)'
++                }}
++              />
++            ))}
++          </div>
++        </div>
++        <div className="glass rounded-xl p-4">
++          <div className="flex items-center gap-2 mb-1">
++            <Sparkles className="w-4 h-4 text-yellow-500" />
++            <span className="text-xs text-muted-foreground">Upgrades</span>
++          </div>
++          <p className="text-2xl font-bold">{Math.floor(level / 3)}</p>
++          <p className="text-[10px] text-muted-foreground">unlocked</p>
++        </div>
++        <div className="glass rounded-xl p-4">
++          <div className="flex items-center gap-2 mb-1">
++            <Unlock className="w-4 h-4 text-green-500" />
++            <span className="text-xs text-muted-foreground">Next at Lv.{level + 1}</span>
++          </div>
++          <p className="text-sm text-muted-foreground mt-2">
++            {level < 5 ? 'Advanced Analytics' :
++             level < 8 ? 'AI Coach' :
++             level < 10 ? 'Memory Lane' :
++             level < 15 ? 'Premium Themes' :
++             level < 20 ? 'Custom Audio' : 'All unlocked'}
++          </p>
++        </div>
++        <div className="glass rounded-xl p-4">
++          <div className="flex items-center gap-2 mb-1">
++            <RotateCcw className="w-4 h-4 text-blue-500" />
++            <span className="text-xs text-muted-foreground">Rotate</span>
++          </div>
++          <p className="text-xs text-muted-foreground mt-2">Drag to orbit • Scroll to zoom</p>
++        </div>
++      </div>
++    </div>
++  )
++}
+diff -ruN '--exclude=.git' '--exclude=node_modules' '--exclude=.next' src/app/(auth)/login/page.tsx src/app/(auth)/login/page.tsx
+--- src/app/(auth)/login/page.tsx	2026-06-20 12:01:18.455199963 +0000
++++ src/app/(auth)/login/page.tsx	2026-06-20 12:04:12.041780110 +0000
+@@ -66,10 +66,10 @@
+     setError(null)
+     try {
+       await startDemo()
+-      router.push('/dashboard')
++      // Hard navigation so server re-reads the demo cookie before rendering
++      window.location.href = '/dashboard'
+     } catch {
+-      setError('Failed to start demo')
+-    } finally {
++      setError('Failed to start demo. Please try again.')
+       setIsLoading(false)
+     }
+   }
+diff -ruN '--exclude=.git' '--exclude=node_modules' '--exclude=.next' src/app/api/audio-prefs/route.ts src/app/api/audio-prefs/route.ts
+--- src/app/api/audio-prefs/route.ts	1970-01-01 00:00:00.000000000 +0000
++++ src/app/api/audio-prefs/route.ts	2026-06-20 12:06:39.759192614 +0000
+@@ -0,0 +1,42 @@
++import { NextRequest, NextResponse } from 'next/server'
++import { prisma } from '@/lib/prisma'
++import { createSupabaseServerClient } from '@/lib/supabase-server'
++import { DEMO_COOKIE, DEMO_USER_ID } from '@/lib/demo'
++import { cookies } from 'next/headers'
++
++async function getUserId(): Promise<string | null> {
++  const cookieStore = await cookies()
++  if (cookieStore.get(DEMO_COOKIE)?.value === 'true') return DEMO_USER_ID
++  const supabase = await createSupabaseServerClient()
++  const { data: { user } } = await supabase.auth.getUser()
++  return user?.id ?? null
++}
++
++export async function GET() {
++  try {
++    const userId = await getUserId()
++    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
++
++    const prefs = await prisma.audioPreference.findUnique({ where: { userId } })
++    return NextResponse.json(prefs || {})
++  } catch {
++    return NextResponse.json({}, { status: 200 })
++  }
++}
++
++export async function POST(req: NextRequest) {
++  try {
++    const userId = await getUserId()
++    if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
++
++    const body = await req.json()
++    const prefs = await prisma.audioPreference.upsert({
++      where: { userId },
++      create: { userId, ...body },
++      update: body,
++    })
++    return NextResponse.json(prefs)
++  } catch {
++    return NextResponse.json({ ok: true })
++  }
++}
+diff -ruN '--exclude=.git' '--exclude=node_modules' '--exclude=.next' src/audio/engine/audio-engine.ts src/audio/engine/audio-engine.ts
+--- src/audio/engine/audio-engine.ts	2026-06-20 12:01:18.462367319 +0000
++++ src/audio/engine/audio-engine.ts	2026-06-20 12:09:13.856810806 +0000
+@@ -2,7 +2,7 @@
+ 
+ export type BusType = 'master' | 'music' | 'sfx' | 'ambient' | 'voice' | 'ui';
+ export type SoundName = 'mission_complete' | 'level_up' | 'achievement' | 'xp_gain' | 'focus_start' | 'focus_end' | 'capsule_open' | 'streak_updated' | 'campaign_complete' | 'daily_briefing' | 'workspace_upgrade' | 'notification';
+-export type AmbientType = 'focus_deep' | 'focus_light' | 'rain' | 'forest' | 'ocean' | 'cafe';
++export type AmbientType = 'focus_deep' | 'focus_light' | 'rain' | 'forest' | 'ocean' | 'cafe' | 'bubble_pop' | 'lo_fi';
+ 
+ type BusConfig = { gain: GainNode; volume: number };
+ 
+@@ -371,6 +371,93 @@
+         break;
+       }
+ 
++
++      case 'bubble_pop': {
++        // Gentle sine-based bubble pops — ASMR style
++        const buf = createNoiseBuffer(sampleRate * duration);
++        source.buffer = buf;
++        filter.type = 'highpass';
++        filter.frequency.value = 4000;
++        filter.Q.value = 8;
++        gain.gain.value = 0.0; // main noise off — only pops play
++
++        const pop = (delay: number) => {
++          if (this.currentAmbient !== 'bubble_pop') return;
++          const popOsc = this.ctx!.createOscillator();
++          const popGain = this.ctx!.createGain();
++          const popFilter = this.ctx!.createBiquadFilter();
++          popOsc.type = 'sine';
++          const baseFreq = 600 + Math.random() * 800;
++          popOsc.frequency.setValueAtTime(baseFreq, this.ctx!.currentTime + delay);
++          popOsc.frequency.exponentialRampToValueAtTime(baseFreq * 0.6, this.ctx!.currentTime + delay + 0.08);
++          popFilter.type = 'bandpass';
++          popFilter.frequency.value = baseFreq;
++          popFilter.Q.value = 4;
++          popGain.gain.setValueAtTime(0, this.ctx!.currentTime + delay);
++          popGain.gain.linearRampToValueAtTime(0.18, this.ctx!.currentTime + delay + 0.01);
++          popGain.gain.exponentialRampToValueAtTime(0.001, this.ctx!.currentTime + delay + 0.1);
++          popOsc.connect(popFilter);
++          popFilter.connect(popGain);
++          popGain.connect(ambientBus);
++          popOsc.start(this.ctx!.currentTime + delay);
++          popOsc.stop(this.ctx!.currentTime + delay + 0.12);
++          this.ambientNodes.push(popOsc, popFilter, popGain);
++        };
++
++        // Schedule initial pops
++        for (let i = 0; i < 6; i++) pop(Math.random() * 4);
++
++        // Recurring pops
++        const rePop = setInterval(() => {
++          if (this.currentAmbient !== 'bubble_pop') { clearInterval(rePop); return; }
++          const count = 1 + Math.floor(Math.random() * 3);
++          for (let i = 0; i < count; i++) pop(Math.random() * 2);
++        }, 1500 + Math.random() * 2000);
++        (source as any)._popInterval = rePop;
++        break;
++      }
++
++      case 'lo_fi': {
++        // Vinyl crackle + soft low-freq warmth
++        const buf = createNoiseBuffer(sampleRate * duration);
++        source.buffer = buf;
++        filter.type = 'bandpass';
++        filter.frequency.value = 3500;
++        filter.Q.value = 0.3;
++        gain.gain.value = 0.04; // light crackle
++
++        // Warm bass drone
++        const warmDrone = this.ctx.createOscillator();
++        const warmGain = this.ctx.createGain();
++        warmDrone.type = 'triangle';
++        warmDrone.frequency.value = 80;
++        warmGain.gain.value = 0.06;
++        warmDrone.connect(warmGain);
++        warmGain.connect(ambientBus);
++        warmDrone.start();
++        this.ambientNodes.push(warmDrone, warmGain);
++
++        // Soft mid warmth
++        const midWarm = this.ctx.createOscillator();
++        const midGain = this.ctx.createGain();
++        midWarm.type = 'sine';
++        midWarm.frequency.value = 220;
++        midGain.gain.value = 0.02;
++        midWarm.connect(midGain);
++        midGain.connect(ambientBus);
++        midWarm.start();
++        this.ambientNodes.push(midWarm, midGain);
++
++        lfo.type = 'sine';
++        lfo.frequency.value = 0.05;
++        lfoGain.gain.value = 0.015;
++        lfo.connect(lfoGain);
++        lfoGain.connect(gain.gain);
++        lfo.start();
++        this.lfos.push(lfo);
++        break;
++      }
++
+       case 'cafe': {
+         const buf = createNoiseBuffer(sampleRate * duration);
+         source.buffer = buf;
+@@ -418,6 +505,7 @@
+     const source = this.ambientNodes.find(n => n instanceof AudioBufferSourceNode) as AudioBufferSourceNode | undefined;
+     if ((source as any)?._chirpInterval) clearInterval((source as any)._chirpInterval);
+     if ((source as any)?._clatterInterval) clearInterval((source as any)._clatterInterval);
++    if ((source as any)?._popInterval) clearInterval((source as any)._popInterval);
+ 
+     this.ambientNodes.forEach(n => {
+       try {
+diff -ruN '--exclude=.git' '--exclude=node_modules' '--exclude=.next' src/components/dashboard/commander-profile.tsx src/components/dashboard/commander-profile.tsx
+--- src/components/dashboard/commander-profile.tsx	1970-01-01 00:00:00.000000000 +0000
++++ src/components/dashboard/commander-profile.tsx	2026-06-20 12:05:22.087194390 +0000
+@@ -0,0 +1,82 @@
++'use client'
++
++import { useXPStore } from '@/store/xp-store'
++import { useAppStore } from '@/store/app-store'
++import { useEffect } from 'react'
++import { Zap, ChevronUp } from 'lucide-react'
++
++const RANKS = [
++  { name: 'Cadet', level: 1, icon: '🎖️' },
++  { name: 'Operator', level: 5, icon: '⚡' },
++  { name: 'Tactician', level: 15, icon: '🎯' },
++  { name: 'Strategist', level: 30, icon: '🧠' },
++  { name: 'Commander', level: 50, icon: '🚀' },
++  { name: 'Elite', level: 70, icon: '💎' },
++  { name: 'Legend', level: 85, icon: '🌟' },
++  { name: 'Icon', level: 100, icon: '👑' },
++]
++
++function getRank(level: number) {
++  return RANKS.filter(r => level >= r.level).pop() || RANKS[0]
++}
++
++function getNextRank(level: number) {
++  return RANKS.find(r => r.level > level) || null
++}
++
++export function CommanderProfile() {
++  const { userId } = useAppStore()
++  const { level, totalXP, currentXP, xpToNextLevel, progress, fetchLevelInfo } = useXPStore()
++
++  useEffect(() => {
++    if (userId) fetchLevelInfo(userId)
++  }, [userId, fetchLevelInfo])
++
++  const rank = getRank(level)
++  const nextRank = getNextRank(level)
++
++  return (
++    <div className="glass rounded-xl p-4">
++      <div className="flex items-center justify-between mb-4">
++        <span className="text-sm font-medium">Commander Profile</span>
++        <span className="text-xs text-muted-foreground">Lv.{level}</span>
++      </div>
++
++      {/* Rank badge */}
++      <div className="flex items-center gap-3 mb-4">
++        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center text-2xl border border-primary/20">
++          {rank.icon}
++        </div>
++        <div>
++          <p className="font-bold text-sm text-gradient">{rank.name}</p>
++          <p className="text-xs text-muted-foreground">{totalXP.toLocaleString()} total XP</p>
++        </div>
++      </div>
++
++      {/* XP Progress */}
++      <div className="mb-3">
++        <div className="flex items-center justify-between mb-1.5">
++          <div className="flex items-center gap-1">
++            <Zap className="w-3 h-3 text-yellow-400" />
++            <span className="text-xs text-muted-foreground">XP Progress</span>
++          </div>
++          <span className="text-xs tabular-nums font-mono">{currentXP}/{xpToNextLevel}</span>
++        </div>
++        <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
++          <div
++            className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all duration-700"
++            style={{ width: `${progress}%` }}
++          />
++        </div>
++      </div>
++
++      {/* Next rank */}
++      {nextRank && (
++        <div className="flex items-center gap-2 text-xs text-muted-foreground">
++          <ChevronUp className="w-3 h-3" />
++          <span>Next rank: <span className="text-primary">{nextRank.name}</span> at Lv.{nextRank.level}</span>
++        </div>
++      )}
++    </div>
++  )
++}
+diff -ruN '--exclude=.git' '--exclude=node_modules' '--exclude=.next' src/components/dashboard/mission-hero.tsx src/components/dashboard/mission-hero.tsx
+--- src/components/dashboard/mission-hero.tsx	1970-01-01 00:00:00.000000000 +0000
++++ src/components/dashboard/mission-hero.tsx	2026-06-20 12:05:04.535194792 +0000
+@@ -0,0 +1,122 @@
++'use client'
++
++import { useMemo } from 'react'
++import { Target, Flame, Brain, CheckCircle2 } from 'lucide-react'
++
++interface MissionHeroProps {
++  missions: any[]
++  streak: number
++  focusSessions: number
++  completedToday: number
++  recentXP?: number
++}
++
++const RANKS = [
++  { name: 'Cadet', min: 0 },
++  { name: 'Operator', min: 10 },
++  { name: 'Tactician', min: 25 },
++  { name: 'Strategist', min: 45 },
++  { name: 'Commander', min: 65 },
++  { name: 'Elite', min: 80 },
++  { name: 'Legend', min: 92 },
++  { name: 'Icon', min: 100 },
++]
++
++function getGreeting() {
++  const h = new Date().getHours()
++  if (h < 12) return 'Good morning'
++  if (h < 17) return 'Good afternoon'
++  return 'Good evening'
++}
++
++function getReadinessLabel(score: number) {
++  if (score >= 80) return { label: 'OPTIMAL', color: 'text-emerald-400' }
++  if (score >= 60) return { label: 'READY', color: 'text-primary' }
++  if (score >= 40) return { label: 'WARMING UP', color: 'text-yellow-400' }
++  return { label: 'NEEDS ACTIVATION', color: 'text-orange-400' }
++}
++
++export function MissionHero({ missions, streak, focusSessions, completedToday, recentXP = 0 }: MissionHeroProps) {
++  const activeMissions = missions.filter(m => m.status === 'active' || m.status === 'pending').length
++
++  const readiness = useMemo(() => {
++    const score =
++      Math.min(activeMissions * 25, 25) +
++      Math.min(focusSessions * 20, 20) +
++      Math.min(completedToday * 25, 25) +
++      Math.min(recentXP * 0.15, 15) +
++      Math.min(streak * 15, 15)
++    return Math.min(Math.round(score), 100)
++  }, [activeMissions, focusSessions, completedToday, recentXP, streak])
++
++  const { label, color } = getReadinessLabel(readiness)
++
++  const currentRank = RANKS.filter(r => readiness >= r.min).pop()?.name || 'Cadet'
++
++  return (
++    <div className="glass rounded-2xl p-6 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 border border-primary/10">
++      <div className="flex items-start justify-between mb-4">
++        <div>
++          <p className="text-xs text-muted-foreground uppercase tracking-widest mb-1">
++            ■ SYSTEM ONLINE — {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
++          </p>
++          <h1 className="text-2xl font-bold">
++            {getGreeting()}, <span className="text-gradient">Commander</span>
++          </h1>
++          <p className="text-sm text-muted-foreground mt-1">
++            Your command center is online. All systems nominal.
++          </p>
++        </div>
++        <div className="flex flex-col items-end gap-1">
++          <div className="flex items-center gap-2">
++            <span className="text-3xl font-mono font-bold tabular-nums">{readiness}%</span>
++          </div>
++          <span className={`text-xs font-bold tracking-widest ${color}`}>{label}</span>
++          <span className="text-[10px] text-muted-foreground">{currentRank}</span>
++        </div>
++      </div>
++
++      {/* Readiness bar */}
++      <div className="mb-5">
++        <div className="w-full h-1.5 rounded-full bg-muted overflow-hidden">
++          <div
++            className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all duration-1000"
++            style={{ width: `${readiness}%` }}
++          />
++        </div>
++      </div>
++
++      {/* Stat strip */}
++      <div className="grid grid-cols-4 gap-3">
++        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/20">
++          <Target className="w-3.5 h-3.5 text-primary" />
++          <div>
++            <p className="text-xs font-bold tabular-nums">{activeMissions}</p>
++            <p className="text-[10px] text-muted-foreground">Active</p>
++          </div>
++        </div>
++        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/20">
++          <Brain className="w-3.5 h-3.5 text-green-400" />
++          <div>
++            <p className="text-xs font-bold tabular-nums">{focusSessions}</p>
++            <p className="text-[10px] text-muted-foreground">Focus</p>
++          </div>
++        </div>
++        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/20">
++          <Flame className="w-3.5 h-3.5 text-orange-400" />
++          <div>
++            <p className="text-xs font-bold tabular-nums">{streak}d</p>
++            <p className="text-[10px] text-muted-foreground">Streak</p>
++          </div>
++        </div>
++        <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-black/20">
++          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
++          <div>
++            <p className="text-xs font-bold tabular-nums">{completedToday}</p>
++            <p className="text-[10px] text-muted-foreground">Done today</p>
++          </div>
++        </div>
++      </div>
++    </div>
++  )
++}
+diff -ruN '--exclude=.git' '--exclude=node_modules' '--exclude=.next' src/components/layout/header.tsx src/components/layout/header.tsx
+--- src/components/layout/header.tsx	2026-06-20 12:01:18.465085393 +0000
++++ src/components/layout/header.tsx	2026-06-20 12:08:41.179189837 +0000
+@@ -4,23 +4,38 @@
+ import { useAppStore } from '@/store/app-store'
+ 
+ export function Header() {
+-  const { unreadCount, toggleCommandPalette } = useAppStore()
++  const { unreadCount, toggleCommandPalette, userId, isDemo } = useAppStore()
++
++  // Get display initial — demo user is "D", real users use their ID first char
++  const initial = isDemo ? 'D' : (userId?.charAt(0)?.toUpperCase() || 'U')
+ 
+   return (
+     <header className="fixed top-0 left-64 right-0 h-16 glass border-b z-30">
+       <div className="flex items-center justify-between h-full px-6">
+-        <button
+-          onClick={toggleCommandPalette}
+-          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted/50 text-muted-foreground hover:text-foreground transition-colors text-sm w-72"
+-        >
+-          <Search className="w-4 h-4" />
+-          <span>Search missions, campaigns...</span>
+-          <kbd className="ml-auto flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted text-xs">
+-            <Command className="w-3 h-3" />K
+-          </kbd>
+-        </button>
++        {/* Left: system status */}
++        <div className="flex items-center gap-4">
++          <div className="flex items-center gap-2">
++            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse-glow" />
++            <span className="text-xs text-muted-foreground font-mono tracking-wider">SYSTEM ONLINE</span>
++            <span className="text-xs text-muted-foreground hidden lg:block">
++              — {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
++            </span>
++          </div>
++        </div>
+ 
++        {/* Right: search + notifications + avatar */}
+         <div className="flex items-center gap-3">
++          <button
++            onClick={toggleCommandPalette}
++            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-muted/50 text-muted-foreground hover:text-foreground transition-colors text-sm w-60"
++          >
++            <Search className="w-4 h-4" />
++            <span>Search...</span>
++            <kbd className="ml-auto flex items-center gap-1 px-1.5 py-0.5 rounded bg-muted text-xs">
++              <Command className="w-3 h-3" />K
++            </kbd>
++          </button>
++
+           <button className="relative p-2 rounded-lg hover:bg-muted/50 transition-colors">
+             <Bell className="w-5 h-5" />
+             {unreadCount > 0 && (
+@@ -31,7 +46,7 @@
+           </button>
+ 
+           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-sm font-bold text-white">
+-            U
++            {initial}
+           </div>
+         </div>
+       </div>
+diff -ruN '--exclude=.git' '--exclude=node_modules' '--exclude=.next' src/components/layout/sidebar.tsx src/components/layout/sidebar.tsx
+--- src/components/layout/sidebar.tsx	2026-06-20 12:01:18.465085393 +0000
++++ src/components/layout/sidebar.tsx	2026-06-20 12:08:28.463190127 +0000
+@@ -28,6 +28,28 @@
+ export function Sidebar() {
+   const pathname = usePathname()
+ 
++  const NavLink = ({ href, icon: Icon, label }: { href: string; icon: any; label: string }) => {
++    const isActive = pathname === href || pathname.startsWith(href + '/')
++    return (
++      <Link
++        href={href}
++        className={cn(
++          'relative flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
++          isActive
++            ? 'bg-primary/10 text-primary'
++            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
++        )}
++      >
++        {/* Active left bar indicator */}
++        {isActive && (
++          <span className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-5 rounded-full bg-gradient-to-b from-primary to-accent" />
++        )}
++        <Icon className="w-4 h-4" />
++        {label}
++      </Link>
++    )
++  }
++
+   return (
+     <aside className="fixed left-0 top-0 h-screen w-64 glass border-r z-40">
+       <div className="flex flex-col h-full p-4">
+@@ -36,45 +58,18 @@
+             <Rocket className="w-5 h-5 text-primary" />
+           </div>
+           <div>
+-            <h1 className="font-bold text-lg">Mission Control</h1>
++            <h1 className="font-bold text-lg text-gradient">Mission Control</h1>
+             <p className="text-xs text-muted-foreground">OS v1.0</p>
+           </div>
+         </Link>
+ 
+         <nav className="flex-1 space-y-1">
+-          {navItems.map((item) => {
+-            const Icon = item.icon
+-            const isActive = pathname === item.href || pathname.startsWith(item.href + '/')
+-            return (
+-              <Link
+-                key={item.href}
+-                href={item.href}
+-                className={cn(
+-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
+-                  isActive
+-                    ? 'bg-primary/10 text-primary'
+-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+-                )}
+-              >
+-                <Icon className="w-4 h-4" />
+-                {item.label}
+-              </Link>
+-            )
+-          })}
++          {navItems.map((item) => (
++            <NavLink key={item.href} {...item} />
++          ))}
+         </nav>
+ 
+-        <Link
+-          href="/settings"
+-          className={cn(
+-            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all',
+-            pathname === '/settings'
+-              ? 'bg-primary/10 text-primary'
+-              : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+-          )}
+-        >
+-          <Settings className="w-4 h-4" />
+-          Settings
+-        </Link>
++        <NavLink href="/settings" icon={Settings} label="Settings" />
+       </div>
+     </aside>
+   )
+diff -ruN '--exclude=.git' '--exclude=node_modules' '--exclude=.next' src/components/ui/empty-state.tsx src/components/ui/empty-state.tsx
+--- src/components/ui/empty-state.tsx	1970-01-01 00:00:00.000000000 +0000
++++ src/components/ui/empty-state.tsx	2026-06-20 12:04:39.131195373 +0000
+@@ -0,0 +1,21 @@
++import { ReactNode } from 'react'
++
++interface EmptyStateProps {
++  icon: ReactNode
++  title: string
++  description: string
++  action?: ReactNode
++}
++
++export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
++  return (
++    <div className="glass rounded-xl p-12 flex flex-col items-center text-center">
++      <div className="w-16 h-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4 text-muted-foreground">
++        {icon}
++      </div>
++      <h3 className="font-semibold mb-2">{title}</h3>
++      <p className="text-sm text-muted-foreground max-w-sm leading-relaxed mb-6">{description}</p>
++      {action}
++    </div>
++  )
++}
+diff -ruN '--exclude=.git' '--exclude=node_modules' '--exclude=.next' src/components/ui/glow-background.tsx src/components/ui/glow-background.tsx
+--- src/components/ui/glow-background.tsx	1970-01-01 00:00:00.000000000 +0000
++++ src/components/ui/glow-background.tsx	2026-06-20 12:04:27.695195634 +0000
+@@ -0,0 +1,105 @@
++'use client'
++
++import { useEffect, useRef } from 'react'
++
++interface Orb {
++  x: number
++  y: number
++  r: number
++  color: string
++  speed: number
++  angle: number
++  orbitR: number
++  cx: number
++  cy: number
++}
++
++export function GlowBackground() {
++  const canvasRef = useRef<HTMLCanvasElement>(null)
++  const mouseRef = useRef({ x: 0.5, y: 0.5 })
++  const targetMouseRef = useRef({ x: 0.5, y: 0.5 })
++  const frameRef = useRef<number>(0)
++  const tRef = useRef(0)
++
++  useEffect(() => {
++    const canvas = canvasRef.current
++    if (!canvas) return
++    const ctx = canvas.getContext('2d')
++    if (!ctx) return
++
++    let w = window.innerWidth
++    let h = window.innerHeight
++
++    const resize = () => {
++      w = canvas.width = window.innerWidth
++      h = canvas.height = window.innerHeight
++    }
++    resize()
++    window.addEventListener('resize', resize)
++
++    const onMouseMove = (e: MouseEvent) => {
++      targetMouseRef.current = { x: e.clientX / w, y: e.clientY / h }
++    }
++    window.addEventListener('mousemove', onMouseMove)
++
++    const orbs: Orb[] = [
++      { cx: 0.25, cy: 0.3, x: 0.25, y: 0.3, r: 0, speed: 0.0003, angle: 0, orbitR: 0.12, color: '139,92,246' },   // purple
++      { cx: 0.75, cy: 0.7, x: 0.75, y: 0.7, r: 0, speed: 0.0002, angle: 2.1, orbitR: 0.1, color: '192,38,211' },   // pink-magenta
++      { cx: 0.1, cy: 0.8, x: 0.1, y: 0.8, r: 0, speed: 0.00025, angle: 4.2, orbitR: 0.08, color: '59,130,246' },  // blue
++      { cx: 0.85, cy: 0.2, x: 0.85, y: 0.2, r: 0, speed: 0.00015, angle: 1.0, orbitR: 0.14, color: '168,85,247' }, // violet
++    ]
++
++    const draw = () => {
++      tRef.current += 1
++
++      // Smooth mouse interpolation
++      mouseRef.current.x += (targetMouseRef.current.x - mouseRef.current.x) * 0.04
++      mouseRef.current.y += (targetMouseRef.current.y - mouseRef.current.y) * 0.04
++
++      ctx.clearRect(0, 0, w, h)
++
++      orbs.forEach((orb) => {
++        orb.angle += orb.speed * 60
++        // Orbit center tracks slowly toward mouse
++        orb.cx += (mouseRef.current.x * 0.3 + orb.cx * 0.7 - orb.cx) * 0.003
++        orb.cy += (mouseRef.current.y * 0.3 + orb.cy * 0.7 - orb.cy) * 0.003
++
++        orb.x = orb.cx + Math.cos(orb.angle) * orb.orbitR
++        orb.y = orb.cy + Math.sin(orb.angle) * orb.orbitR * 0.6
++
++        const px = orb.x * w
++        const py = orb.y * h
++        const radius = Math.min(w, h) * (0.25 + 0.05 * Math.sin(tRef.current * 0.005 + orb.angle))
++
++        const grad = ctx.createRadialGradient(px, py, 0, px, py, radius)
++        grad.addColorStop(0, `rgba(${orb.color}, 0.13)`)
++        grad.addColorStop(0.5, `rgba(${orb.color}, 0.06)`)
++        grad.addColorStop(1, `rgba(${orb.color}, 0)`)
++
++        ctx.globalCompositeOperation = 'screen'
++        ctx.fillStyle = grad
++        ctx.beginPath()
++        ctx.arc(px, py, radius, 0, Math.PI * 2)
++        ctx.fill()
++      })
++
++      frameRef.current = requestAnimationFrame(draw)
++    }
++
++    draw()
++
++    return () => {
++      cancelAnimationFrame(frameRef.current)
++      window.removeEventListener('resize', resize)
++      window.removeEventListener('mousemove', onMouseMove)
++    }
++  }, [])
++
++  return (
++    <canvas
++      ref={canvasRef}
++      className="fixed inset-0 z-0 pointer-events-none"
++      style={{ mixBlendMode: 'screen' }}
++    />
++  )
++}
+diff -ruN '--exclude=.git' '--exclude=node_modules' '--exclude=.next' src/store/ai-store.ts src/store/ai-store.ts
+--- src/store/ai-store.ts	2026-06-20 12:01:18.478799676 +0000
++++ src/store/ai-store.ts	2026-06-20 12:09:36.686401743 +0000
+@@ -85,7 +85,16 @@
+         coachLoading: false,
+       }))
+     } catch {
+-      set({ coachLoading: false })
++      // Fallback greeting if AI unavailable
++      const state = get()
++      if (state.coachMessages.length === 0) {
++        set({
++          coachMessages: [{ role: 'coach', content: 'Commander. Ready for your briefing. What objective are we tackling today?' }],
++          coachLoading: false,
++        })
++      } else {
++        set({ coachLoading: false })
++      }
+     }
+   },
+ 
+diff -ruN '--exclude=.git' '--exclude=node_modules' '--exclude=.next' src/store/audio-store.ts src/store/audio-store.ts
+--- src/store/audio-store.ts	2026-06-20 12:01:18.478799676 +0000
++++ src/store/audio-store.ts	2026-06-20 12:09:18.908348871 +0000
+@@ -1,6 +1,5 @@
+ import { create } from 'zustand'
+ import { audioEngine } from '@/services/audio'
+-import { prisma } from '@/lib/prisma'
+ import type { BusType, AmbientType, SoundName } from '@/audio/engine/audio-engine'
+ 
+ type SoundProfile = {
+@@ -25,6 +24,8 @@
+   { id: 'forest', name: 'Forest', description: 'Birds and rustling leaves', icon: '🌲', premium: false },
+   { id: 'ocean', name: 'Ocean Waves', description: 'Gentle waves crashing', icon: '🌊', premium: true },
+   { id: 'cafe', name: 'Café', description: 'Warm coffee shop buzz', icon: '☕', premium: true },
++  { id: 'bubble_pop', name: 'Bubble Pop', description: 'Gentle ASMR bubble pops', icon: '🫧', premium: false },
++  { id: 'lo_fi', name: 'Lo-Fi Vinyl', description: 'Vinyl crackle + warm bass', icon: '🎵', premium: false },
+ ]
+ 
+ interface AudioState {
+@@ -98,10 +99,12 @@
+     }
+   },
+ 
+-  loadPreferences: async (userId: string) => {
++  loadPreferences: async (_userId: string) => {
+     try {
+-      const prefs = await prisma.audioPreference.findUnique({ where: { userId } })
+-      if (prefs) {
++      const res = await fetch('/api/audio-prefs')
++      if (!res.ok) return
++      const prefs = await res.json()
++      if (prefs && prefs.masterVolume !== undefined) {
+         const volumes = {
+           master: prefs.masterVolume,
+           music: prefs.musicVolume,
+@@ -111,26 +114,26 @@
+           ui: prefs.uiVolume,
+         }
+         Object.entries(volumes).forEach(([bus, vol]) => {
+-          audioEngine.setBusVolume(bus as BusType, vol)
++          audioEngine.setBusVolume(bus as BusType, vol as number)
+         })
+         set({
+           volumes,
+           activeProfile: prefs.activeProfile || 'default',
+-          premiumUnlocked: prefs.premiumPacks.length > 0,
++          premiumUnlocked: (prefs.premiumPacks || []).length > 0,
+         })
+       }
+     } catch {
+-      // silent
++      // silent — audio prefs are non-critical
+     }
+   },
+ 
+-  savePreferences: async (userId: string) => {
++  savePreferences: async (_userId: string) => {
+     try {
+       const state = get()
+-      await prisma.audioPreference.upsert({
+-        where: { userId },
+-        create: {
+-          userId,
++      await fetch('/api/audio-prefs', {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json' },
++        body: JSON.stringify({
+           masterVolume: state.volumes.master,
+           musicVolume: state.volumes.music,
+           sfxVolume: state.volumes.sfx,
+@@ -139,20 +142,10 @@
+           uiVolume: state.volumes.ui,
+           activeProfile: state.activeProfile,
+           premiumPacks: state.premiumUnlocked ? ['premium'] : [],
+-        },
+-        update: {
+-          masterVolume: state.volumes.master,
+-          musicVolume: state.volumes.music,
+-          sfxVolume: state.volumes.sfx,
+-          ambientVolume: state.volumes.ambient,
+-          voiceVolume: state.volumes.voice,
+-          uiVolume: state.volumes.ui,
+-          activeProfile: state.activeProfile,
+-          premiumPacks: state.premiumUnlocked ? ['premium'] : [],
+-        },
++        }),
+       })
+     } catch {
+-      // silent
++      // silent — audio pref save is non-critical
+     }
+   },
+ 
