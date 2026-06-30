@@ -2,17 +2,39 @@ import { create } from 'zustand'
 import { MissionCreateInput, MissionUpdateInput } from '@/core/types'
 import { missionService } from '@/services/missions/mission-service'
 
+interface Mission {
+  id: string
+  userId: string
+  campaignId: string | null
+  title: string
+  description: string | null
+  status: string
+  difficulty: string
+  priority: string
+  deadline: string | Date | null
+  estimatedTime: number | null
+  xpReward: number
+  progress: number
+  tags: string[]
+  category: string | null
+  completedAt: string | Date | null
+  createdAt: string | Date
+  updatedAt: string | Date
+  campaign?: { id: string; title: string } | null
+  subtasks?: { id: string; title: string; completed: boolean }[]
+}
+
 interface MissionState {
-  missions: any[]
-  selectedMission: any | null
+  missions: Mission[]
+  selectedMission: Mission | null
   isLoading: boolean
   error: string | null
   fetchMissions: (userId: string) => Promise<void>
-  createMission: (input: MissionCreateInput, userId: string) => Promise<any>
+  createMission: (input: MissionCreateInput, userId: string) => Promise<Mission | null>
   updateMission: (id: string, input: MissionUpdateInput, userId: string) => Promise<void>
-  completeMission: (id: string, userId: string) => Promise<void>
+  completeMission: (id: string, userId: string) => Promise<Mission | null>
   deleteMission: (id: string, userId: string) => Promise<void>
-  setSelectedMission: (mission: any | null) => void
+  setSelectedMission: (mission: Mission | null) => void
 }
 
 export const useMissionStore = create<MissionState>((set, get) => ({
@@ -64,8 +86,10 @@ export const useMissionStore = create<MissionState>((set, get) => ({
         missions: state.missions.map(m => m.id === id ? { ...m, ...completed } : m),
         selectedMission: state.selectedMission?.id === id ? completed : state.selectedMission,
       }))
+      return completed as Mission | null
     } catch (error) {
       set({ error: 'Failed to complete mission' })
+      return null
     }
   },
 

@@ -1,14 +1,33 @@
 import { create } from 'zustand'
 import { FocusSessionInput } from '@/core/types'
+import { FocusSession } from '@/core/types/focus'
 import { focusService } from '@/services/focus/focus-service'
+
+interface FocusStatistics {
+  userId: string
+  totalSessions: number
+  totalMinutes: number
+  averageScore: number
+  longestSession: number
+  currentStreak: number
+  bestStreak: number
+  weeklyMinutes: number
+  monthlyMinutes: number
+}
+
+interface FocusWeeklyEntry {
+  date: string
+  minutes: number
+  sessions: number
+}
 
 interface FocusState {
   isActive: boolean
-  currentSession: any | null
+  currentSession: FocusSession | null
   timeRemaining: number
-  sessions: any[]
-  statistics: any | null
-  weeklyData: any[]
+  sessions: FocusSession[]
+  statistics: FocusStatistics | null
+  weeklyData: FocusWeeklyEntry[]
   isLoading: boolean
   error: string | null
   startSession: (input: FocusSessionInput, userId: string) => Promise<void>

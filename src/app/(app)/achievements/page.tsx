@@ -40,7 +40,7 @@ export default function AchievementsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {allDefinitions.map((def) => {
           const userAchievement = achievements.find(a => a.achievement?.key === def.key)
-          const unlocked = userAchievement?.unlocked || false
+          const unlocked = !!userAchievement?.unlockedAt
           const progress = userAchievement?.progress || 0
 
           return (

@@ -138,6 +138,15 @@ export class AnalyticsService {
         orderBy: { unlockedAt: 'desc' },
         take: 5,
       })
+      const todayCompleted = await prisma.mission.count({
+        where: {
+          userId,
+          status: 'completed',
+          completedAt: {
+            gte: new Date(new Date().setHours(0, 0, 0, 0)),
+          },
+        },
+      })
       const campaigns = await prisma.campaign.findMany({
         where: { userId },
         include: { missions: { select: { status: true } } },
@@ -152,7 +161,7 @@ export class AnalyticsService {
         dailyStreak: streaks.find(s => s.streakType === 'daily')?.currentStreak || 0,
         longestStreak: streaks.find(s => s.streakType === 'daily')?.longestStreak || 0,
         todayMissions: todayMissions.length,
-        todayCompleted: todayMissions.filter(m => m.status === 'completed').length,
+        todayCompleted,
         focusMinutes: focusStats?.totalMinutes || 0,
         focusSessions: focusStats?.totalSessions || 0,
         focusScore: focusStats?.averageScore || 0,

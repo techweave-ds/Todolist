@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { calculateLevel } from '@/lib/utils'
+import { XpTransaction } from '@/core/types/reward'
 import { xpService } from '@/services/xp/xp-service'
 
 interface XPState {
@@ -8,12 +9,12 @@ interface XPState {
   currentXP: number
   xpToNextLevel: number
   progress: number
-  recentTransactions: any[]
+  recentTransactions: XpTransaction[]
   isLoading: boolean
   fetchLevelInfo: (userId: string) => Promise<void>
   fetchTransactions: (userId: string) => Promise<void>
   updateXP: (totalXP: number) => void
-  setRecentTransactions: (transactions: any[]) => void
+  setRecentTransactions: (transactions: XpTransaction[]) => void
 }
 
 export const useXPStore = create<XPState>((set) => ({

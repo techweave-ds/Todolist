@@ -1,12 +1,13 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useMissionStore } from '@/store/mission-store'
 import { useAppStore } from '@/store/app-store'
 import { Plus, MoreHorizontal, Calendar, Clock, Sparkles, Target } from 'lucide-react'
 import { formatRelativeDate } from '@/lib/utils'
 import { GoalBreakdown } from '@/components/ai/goal-breakdown'
 import { EmptyState } from '@/components/ui/empty-state'
+import { XpDisplay } from '@/components/glass/xp-display'
 
 const priorityColors: Record<string, string> = {
   critical: 'bg-red-500',
@@ -32,6 +33,16 @@ export default function MissionsPage() {
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState<string>('medium')
   const [difficulty, setDifficulty] = useState<string>('medium')
+  const [completedXP, setCompletedXP] = useState<{ missionId: string; amount: number } | null>(null)
+
+  const handleComplete = useCallback(async (mission: any) => {
+    if (!userId || mission.status === 'completed') return
+    const result = await completeMission(mission.id, userId)
+    if (result) {
+      setCompletedXP({ missionId: mission.id, amount: result.xpReward })
+      setTimeout(() => setCompletedXP(null), 2000)
+    }
+  }, [userId, completeMission])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -184,10 +195,16 @@ export default function MissionsPage() {
           )
         ) : (
           filteredMissions.map((mission) => (
-            <div key={mission.id} className="glass rounded-xl p-4 mission-card">
+            <div key={mission.id} className="glass rounded-xl p-4 mission-card relative">
+              <XpDisplay
+                amount={completedXP?.missionId === mission.id ? completedXP.amount : 0}
+                show={completedXP?.missionId === mission.id}
+                className="absolute inset-0 flex items-center justify-center z-10"
+              />
               <div className="flex items-start gap-3">
                 <button
-                  onClick={() => userId && completeMission(mission.id, userId)}
+                  onClick={() => handleComplete(mission)}
+                  disabled={mission.status === 'completed'}
                   className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 ${
                     mission.status === 'completed'
                       ? 'border-primary bg-primary text-primary-foreground'

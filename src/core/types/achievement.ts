@@ -4,14 +4,16 @@ export interface Achievement {
   id: string;
   key: string;
   title: string;
-  description: string;
-  category: AchievementCategory;
-  icon: string;
+  description: string | null;
+  category?: AchievementCategory;
+  icon?: string;
   rarity: string;
   xpReward: number;
-  condition: Record<string, unknown>;
-  secret: boolean;
-  createdAt: string;
+  condition: unknown;
+  secret?: boolean;
+  createdAt: string | Date;
+  updatedAt?: string | Date;
+  emoji?: string | null;
 }
 
 export interface UserAchievement {
@@ -19,7 +21,6 @@ export interface UserAchievement {
   userId: string;
   achievementId: string;
   progress: number;
-  maxProgress: number;
-  unlockedAt: string | null;
+  unlockedAt: string | Date | null;
   achievement?: Achievement;
 }

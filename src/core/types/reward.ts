@@ -10,9 +10,10 @@ export interface XpTransaction {
   userId: string;
   amount: number;
   reason: string;
-  multiplier: number;
-  metadata: Record<string, unknown> | null;
-  createdAt: string;
+  multiplier?: number;
+  metadata: Record<string, unknown> | null | unknown;
+  createdAt: string | Date;
+  referenceId?: string | null;
 }
 
 export interface LevelUpResult {

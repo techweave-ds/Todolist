@@ -1,14 +1,33 @@
 import { create } from 'zustand'
 import { analyticsService } from '@/services/analytics/analytics-service'
+import { Notification } from '@/core/types/notification'
 import { DEMO_USER_ID } from '@/lib/demo'
+
+interface DashboardStats {
+  level: number
+  totalXP: number
+  currentXP: number
+  xpToNextLevel: number
+  totalMissionsCompleted: number
+  dailyStreak: number
+  longestStreak: number
+  todayMissions: number
+  todayCompleted: number
+  focusMinutes: number
+  focusSessions: number
+  focusScore: number
+  recentAchievements: { key: string; title: string; emoji: string | null; rarity: string }[]
+  activeCampaigns: number
+  campaignProgress: { id: string; title: string; emoji: string | null; total: number; completed: number }[]
+}
 
 interface AppState {
   userId: string | null
   isDemo: boolean
-  dashboardStats: any | null
+  dashboardStats: DashboardStats | null
   isCommandPaletteOpen: boolean
   isDailyBriefingOpen: boolean
-  notifications: any[]
+  notifications: Notification[]
   unreadCount: number
   isLoading: boolean
   error: string | null
@@ -17,7 +36,7 @@ interface AppState {
   fetchDashboardStats: (userId: string) => Promise<void>
   toggleCommandPalette: () => void
   setDailyBriefingOpen: (open: boolean) => void
-  setNotifications: (notifications: any[]) => void
+  setNotifications: (notifications: Notification[]) => void
   setUnreadCount: (count: number) => void
 }
 

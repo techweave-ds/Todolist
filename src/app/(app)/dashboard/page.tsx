@@ -194,9 +194,9 @@ export default function DashboardPage() {
               Campaign Progress
             </h2>
 
-            {stats?.campaignProgress?.length > 0 ? (
+            {stats && stats.campaignProgress.length > 0 ? (
               <div className="space-y-3">
-                {stats.campaignProgress.map((camp: any) => (
+                {stats.campaignProgress.map((camp) => (
                   <div key={camp.id} className="group">
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="text-sm">{camp.emoji} {camp.title}</span>
@@ -222,9 +222,9 @@ export default function DashboardPage() {
 
           <div className="glass rounded-xl p-4">
             <h2 className="text-sm font-medium mb-3">Recent Achievements</h2>
-            {stats?.recentAchievements?.length > 0 ? (
+            {stats && stats.recentAchievements.length > 0 ? (
               <div className="space-y-2">
-                {stats.recentAchievements.slice(0, 5).map((a: any) => (
+                {stats.recentAchievements.slice(0, 5).map((a) => (
                   <div key={a.key} className="flex items-center gap-2 px-3 py-2 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
                     <span className="text-lg">{a.emoji}</span>
                     <span className="text-xs truncate">{a.title}</span>

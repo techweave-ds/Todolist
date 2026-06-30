@@ -1,9 +1,10 @@
 import { create } from 'zustand'
+import { UserAchievement } from '@/core/types/achievement'
 import { achievementService } from '@/services/achievements/achievement-service'
 
 interface AchievementState {
-  achievements: any[]
-  recentUnlocks: any[]
+  achievements: UserAchievement[]
+  recentUnlocks: UserAchievement[]
   isLoading: boolean
   error: string | null
   fetchAchievements: (userId: string) => Promise<void>
@@ -21,7 +22,7 @@ export const useAchievementStore = create<AchievementState>((set) => ({
       const achievements = await achievementService.getUserAchievements(userId)
       set({
         achievements,
-        recentUnlocks: achievements.filter(a => a.unlocked).slice(0, 5),
+        recentUnlocks: achievements.filter(a => a.unlockedAt).slice(0, 5),
         isLoading: false,
       })
     } catch (error) {

@@ -1,27 +1,35 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useCampaignStore } from '@/store/campaign-store'
 import { useAppStore } from '@/store/app-store'
-import { Plus, MoreHorizontal } from 'lucide-react'
+import { Plus, MoreHorizontal, Flag } from 'lucide-react'
+import { EmptyState } from '@/components/ui/empty-state'
 
 export default function CampaignsPage() {
-  const { campaigns, isLoading, createCampaign, deleteCampaign } = useCampaignStore()
+  const { campaigns, isLoading, error, fetchCampaigns, createCampaign, deleteCampaign } = useCampaignStore()
   const { userId } = useAppStore()
   const [showCreate, setShowCreate] = useState(false)
+  const [creating, setCreating] = useState(false)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [emoji, setEmoji] = useState('🎯')
 
   const emojis = ['🎯', '🚀', '🌟', '🎨', '📚', '💼', '🏠', '💪', '🧠', '🎵']
 
+  useEffect(() => {
+    if (userId) fetchCampaigns(userId)
+  }, [userId, fetchCampaigns])
+
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!userId) return
-    await createCampaign({ title, description, emoji }, userId)
+    if (!userId || !title.trim()) return
+    setCreating(true)
+    await createCampaign({ title: title.trim(), description, emoji }, userId)
     setTitle('')
     setDescription('')
     setShowCreate(false)
+    setCreating(false)
   }
 
   return (
@@ -71,20 +79,51 @@ export default function CampaignsPage() {
               ))}
             </div>
             <div className="flex gap-3">
-              <button type="submit" className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium">Create</button>
+              <button type="submit" disabled={creating || !title.trim()} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium disabled:opacity-50">
+                {creating ? 'Creating...' : 'Create'}
+              </button>
               <button type="button" onClick={() => setShowCreate(false)} className="px-4 py-2 rounded-lg text-sm text-muted-foreground">Cancel</button>
             </div>
           </div>
         </form>
       )}
 
-      <div className="grid grid-cols-2 gap-4">
+      {error && (
+        <div className="glass rounded-xl p-3 text-sm text-red-400 border-red-500/20">
+          {error}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {isLoading ? (
-          <div className="col-span-2 text-center py-12 text-muted-foreground">Loading campaigns...</div>
+          Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="glass rounded-xl p-4">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-10 h-10 bg-muted rounded-xl animate-pulse" />
+                <div className="flex-1">
+                  <div className="h-4 bg-muted rounded w-32 animate-pulse" />
+                  <div className="h-3 bg-muted rounded w-48 mt-1 animate-pulse" />
+                </div>
+              </div>
+              <div className="h-3 bg-muted rounded w-24 animate-pulse mb-2" />
+              <div className="h-1.5 bg-muted rounded-full animate-pulse" />
+            </div>
+          ))
         ) : campaigns.length === 0 ? (
-          <div className="col-span-2 text-center py-12">
-            <p className="text-muted-foreground">No campaigns yet</p>
-          </div>
+          <EmptyState
+            icon={<Flag className="w-12 h-12" />}
+            title="No campaigns deployed"
+            description="Campaigns group related missions toward a larger objective. Start a campaign to track progress across multiple missions."
+            action={
+              <button
+                onClick={() => setShowCreate(true)}
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 transition-opacity"
+              >
+                <Plus className="w-4 h-4" />
+                New Campaign
+              </button>
+            }
+          />
         ) : (
           campaigns.map((campaign: any) => (
             <div key={campaign.id} className="glass rounded-xl p-4 mission-card">
@@ -98,7 +137,7 @@ export default function CampaignsPage() {
                     )}
                   </div>
                 </div>
-                <button onClick={() => userId && deleteCampaign(campaign.id, userId)} className="p-1 rounded hover:bg-muted/50">
+                <button onClick={() => userId && deleteCampaign(campaign.id, userId)} className="p-1 rounded hover:bg-muted/50" aria-label="Delete campaign">
                   <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
                 </button>
               </div>

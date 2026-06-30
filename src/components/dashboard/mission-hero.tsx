@@ -12,13 +12,21 @@ function getGreeting() {
   return 'Good evening'
 }
 
-function getReadinessScore(stats: any) {
+interface ReadinessStats {
+  todayMissions: number
+  todayCompleted: number
+  totalXP: number
+  dailyStreak: number
+  focusSessions: number
+}
+
+function getReadinessScore(stats: ReadinessStats | null) {
   let score = 0
-  if (stats?.activeMissions > 0) score += 25
-  if (stats?.focusSessions > 0) score += 20
-  if (stats?.completedToday > 0) score += 25
-  if (stats?.recentXP > 50) score += 15
-  if (stats?.streakDays > 0) score += 15
+  if (stats && stats.todayMissions > 0) score += 25
+  if (stats && stats.focusSessions > 0) score += 20
+  if (stats && stats.todayCompleted > 0) score += 25
+  if (stats && stats.totalXP > 50) score += 15
+  if (stats && stats.dailyStreak > 0) score += 15
   return Math.min(100, score)
 }
 
@@ -40,7 +48,7 @@ export function MissionHero() {
   const { dashboardStats, isLoading } = useAppStore()
 
   const stats = dashboardStats
-  const readinessScore = useMemo(() => getReadinessScore(stats), [stats])
+  const readinessScore = useMemo(() => getReadinessScore(dashboardStats), [dashboardStats])
   const readinessLabel = getReadinessLabel(readinessScore)
   const readinessColor = getReadinessColor(readinessScore)
 
@@ -92,7 +100,7 @@ export function MissionHero() {
       <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
           <Sparkles className="w-3.5 h-3.5 text-primary/40" />
-          {stats?.activeMissions ?? 0} active missions
+          {stats?.todayMissions ?? 0} active missions
         </span>
         <span className="flex items-center gap-1.5">
           <Zap className="w-3.5 h-3.5 text-accent/40" />
@@ -101,12 +109,12 @@ export function MissionHero() {
         <span className="flex items-center gap-1.5">
           <Shield className="w-3.5 h-3.5 text-emerald-400/40" />
           <span>
-            {stats?.streakDays ?? 0}-day streak
+            {stats?.dailyStreak ?? 0}-day streak
           </span>
         </span>
         <span className="flex items-center gap-1.5">
           <Brain className="w-3.5 h-3.5 text-purple-400/40" />
-          {stats?.completedToday ?? 0} completed today
+          {stats?.todayCompleted ?? 0} completed today
         </span>
       </div>
     </motion.div>

@@ -1,4 +1,5 @@
 import { create } from 'zustand'
+import { AiPlanResult, AiBreakdownResult } from '@/core/types/ai'
 import { aiService } from '@/services/ai/ai-service'
 
 interface CoachMessage {
@@ -9,9 +10,9 @@ interface CoachMessage {
 interface AIState {
   briefing: string | null
   briefingLoading: boolean
-  weeklyPlan: any | null
+  weeklyPlan: AiPlanResult | null
   weeklyPlanLoading: boolean
-  goalResult: any | null
+  goalResult: AiBreakdownResult | null
   goalLoading: boolean
   coachMessages: CoachMessage[]
   coachLoading: boolean
@@ -19,7 +20,7 @@ interface AIState {
   providerHealth: Record<string, boolean> | null
   fetchBriefing: (userId: string) => Promise<void>
   generateWeeklyPlan: (userId: string) => Promise<void>
-  breakDownGoal: (goal: string, userId: string) => Promise<any>
+  breakDownGoal: (goal: string, userId: string) => Promise<AiBreakdownResult | null>
   askCoach: (userId: string, question?: string) => Promise<void>
   getMotivation: (userId: string, context?: string) => Promise<void>
   checkProviders: () => Promise<void>

@@ -5,8 +5,8 @@ export interface MemoryLaneEntry {
   userId: string;
   title: string;
   description: string | null;
-  type: MemoryLaneType;
-  metadata: Record<string, unknown> | null;
-  date: string;
-  createdAt: string;
+  type: MemoryLaneType | string;
+  metadata: Record<string, unknown> | null | unknown;
+  date: string | Date;
+  createdAt: string | Date;
 }

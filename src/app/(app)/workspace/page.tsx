@@ -1,91 +1,141 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { WorkspaceCanvas } from '@/components/workspace/workspace-canvas'
+import { useEffect } from 'react'
+import { WorkspaceScene } from '@/components/workspace/workspace-scene'
+import { UnlockNotification } from '@/components/workspace/unlock-animation'
+import { useWorkspaceStore, UserStats } from '@/store/workspace-store'
 import { useAppStore } from '@/store/app-store'
-import { Sparkles, Zap, Palette, Unlock, RotateCcw } from 'lucide-react'
+import { useXPStore } from '@/store/xp-store'
+import { AMBIENT_MODES, AmbientMode } from '@/core/workspace/progression'
+import { Sparkles, Sun, RotateCcw, Eye, Zap } from 'lucide-react'
+
+const STAGE_LABELS = ['', 'Cadet Desk', 'Operational', 'Advanced', 'Elite', 'Command Center']
 
 export default function WorkspacePage() {
   const { dashboardStats, fetchDashboardStats, userId } = useAppStore()
-  const [theme, setTheme] = useState('neon-dreams')
+  const { level } = useXPStore()
+  const {
+    currentStage, ambientMode, autoRotate, reduceMotion,
+    setAmbientMode, setAutoRotate, setReduceMotion, checkUnlocks
+  } = useWorkspaceStore()
 
   useEffect(() => {
     if (!userId) return
     fetchDashboardStats(userId)
   }, [userId, fetchDashboardStats])
 
-  const level = dashboardStats?.level || 1
-  const totalXP = dashboardStats?.totalXP || 0
+  useEffect(() => {
+    if (!dashboardStats) return
+    const stats: UserStats = {
+      missionsCompleted: dashboardStats.totalMissionsCompleted || 0,
+      focusSessions: dashboardStats.focusSessions || 0,
+      level: dashboardStats.level || 1,
+      campaignsCompleted: dashboardStats.activeCampaigns || 0,
+      achievementsUnlocked: dashboardStats.recentAchievements?.length || 0,
+      streakDays: dashboardStats.dailyStreak || 0,
+      focusHours: Math.floor((dashboardStats.focusMinutes || 0) / 60),
+    }
+    checkUnlocks(stats)
+  }, [dashboardStats, checkUnlocks])
 
   return (
-    <div className="space-y-6 animate-slide-up">
+    <div className="space-y-4 animate-slide-up">
+      <UnlockNotification />
+
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Workspace</h1>
-          <p className="text-sm text-muted-foreground">Your 3D command center — Level {level}</p>
+          <h1 className="text-2xl font-bold tracking-tight">Living Workspace</h1>
+          <p className="text-sm text-muted-foreground">{STAGE_LABELS[currentStage]} &middot; Stage {currentStage}/5</p>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">{totalXP.toLocaleString()} XP</span>
+          <span className="text-xs text-muted-foreground">Lv.{level}</span>
           <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-muted/50">
             <Zap className="w-3 h-3 text-yellow-500" />
-            <span className="text-xs font-medium">Lv.{level}</span>
+            <span className="text-xs font-medium">{currentStage}</span>
           </div>
         </div>
       </div>
 
-      <div className="h-[400px] glass rounded-2xl overflow-hidden">
-        <WorkspaceCanvas level={level} theme={theme} />
+      <div className="h-[500px] lg:h-[600px] glass rounded-2xl overflow-hidden">
+        <WorkspaceScene />
       </div>
 
-      <div className="grid grid-cols-4 gap-4">
-        <div className="glass rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Palette className="w-4 h-4 text-primary" />
-            <span className="text-xs text-muted-foreground">Theme</span>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="glass rounded-xl p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Sun className="w-3.5 h-3.5 text-yellow-500" />
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Ambience</span>
           </div>
-          <div className="flex gap-1 mt-2">
-            {['neon-dreams', 'deep-space', 'aurora', 'cyber'].map(t => (
+          <div className="flex flex-wrap gap-1.5">
+            {AMBIENT_MODES.map(m => (
               <button
-                key={t}
-                onClick={() => setTheme(t)}
-                className={`w-6 h-6 rounded-full transition-all ${theme === t ? 'ring-2 ring-primary scale-110' : ''}`}
-                style={{
-                  background: t === 'neon-dreams' ? 'linear-gradient(135deg, #8B5CF6, #EC4899)' :
-                              t === 'deep-space' ? 'linear-gradient(135deg, #3730A3, #1E40AF)' :
-                              t === 'aurora' ? 'linear-gradient(135deg, #10B981, #3B82F6)' :
-                              'linear-gradient(135deg, #EC4899, #F59E0B)'
-                }}
-              />
+                key={m.id}
+                onClick={() => setAmbientMode(m.id)}
+                className={`px-2 py-1 rounded-md text-[10px] font-medium transition-all ${
+                  ambientMode === m.id
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+                }`}
+              >
+                {m.label}
+              </button>
             ))}
           </div>
         </div>
-        <div className="glass rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Sparkles className="w-4 h-4 text-yellow-500" />
-            <span className="text-xs text-muted-foreground">Upgrades</span>
+
+        <div className="glass rounded-xl p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Sparkles className="w-3.5 h-3.5 text-primary" />
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Stage Progress</span>
           </div>
-          <p className="text-2xl font-bold">{Math.floor(level / 3)}</p>
-          <p className="text-[10px] text-muted-foreground">unlocked</p>
-        </div>
-        <div className="glass rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Unlock className="w-4 h-4 text-green-500" />
-            <span className="text-xs text-muted-foreground">Next at Lv.{level + 1}</span>
+          <div className="flex items-center gap-2">
+            {[1, 2, 3, 4, 5].map(s => (
+              <div
+                key={s}
+                className={`w-8 h-1.5 rounded-full transition-all ${
+                  s <= currentStage ? 'bg-gradient-to-r from-primary to-accent' : 'bg-muted'
+                }`}
+              />
+            ))}
           </div>
-          <p className="text-sm text-muted-foreground mt-2">
-            {level < 5 ? 'Advanced Analytics' :
-             level < 8 ? 'AI Coach' :
-             level < 10 ? 'Memory Lane' :
-             level < 15 ? 'Premium Themes' :
-             level < 20 ? 'Custom Audio' : 'All unlocked'}
+          <p className="text-[10px] text-muted-foreground mt-1.5">
+            {STAGE_LABELS[currentStage]}
           </p>
         </div>
-        <div className="glass rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <RotateCcw className="w-4 h-4 text-blue-500" />
-            <span className="text-xs text-muted-foreground">Rotate</span>
+
+        <div className="glass rounded-xl p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <RotateCcw className="w-3.5 h-3.5 text-blue-500" />
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Controls</span>
           </div>
-          <p className="text-xs text-muted-foreground mt-2">Drag to orbit • Scroll to zoom</p>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setAutoRotate(!autoRotate)}
+              className={`px-2.5 py-1 rounded-md text-[10px] font-medium transition-all ${
+                autoRotate ? 'bg-primary/20 text-primary' : 'bg-muted/50 text-muted-foreground'
+              }`}
+            >
+              Auto-rotate {autoRotate ? 'ON' : 'OFF'}
+            </button>
+            <button
+              onClick={() => setReduceMotion(!reduceMotion)}
+              className={`px-2.5 py-1 rounded-md text-[10px] font-medium transition-all ${
+                reduceMotion ? 'bg-primary/20 text-primary' : 'bg-muted/50 text-muted-foreground'
+              }`}
+            >
+              <Eye className="w-3 h-3 inline mr-1" />
+              {reduceMotion ? 'Low' : 'Full'}
+            </button>
+          </div>
+        </div>
+
+        <div className="glass rounded-xl p-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Zap className="w-3.5 h-3.5 text-accent" />
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider">Objects</span>
+          </div>
+          <p className="text-lg font-bold">{currentStage === 1 ? 6 : currentStage === 2 ? 10 : currentStage === 3 ? 15 : currentStage === 4 ? 20 : 26}</p>
+          <p className="text-[10px] text-muted-foreground">workspace objects</p>
         </div>
       </div>
     </div>
