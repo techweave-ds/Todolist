@@ -12,6 +12,13 @@ async function getAuthUserId(): Promise<string> {
   const isDemo = cookieStore.get(DEMO_COOKIE)?.value === 'true'
   if (isDemo) return DEMO_USER_ID
 
+  const localUserId = cookieStore.get('local_user_id')?.value
+  if (localUserId) return localUserId
+
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    throw new Error('Unauthorized — no session found. Please log in or create an account.')
+  }
+
   const supabase = await createSupabaseServerClient()
   const { data: { user }, error } = await supabase.auth.getUser()
   if (error || !user) throw new Error('Unauthorized')
@@ -169,4 +176,61 @@ export async function startDemo() {
 export async function endDemo() {
   const cookieStore = await cookies()
   cookieStore.delete(DEMO_COOKIE)
+}
+
+function generateId() {
+  return 'user_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10)
+}
+
+export async function registerUser(formData: FormData) {
+  const email = formData.get('email') as string
+  const password = formData.get('password') as string
+  const displayName = formData.get('name') as string
+
+  if (!email || !password) {
+    return { error: 'Email and password are required' }
+  }
+
+  if (password.length < 6) {
+    return { error: 'Password must be at least 6 characters' }
+  }
+
+  const cookieStore = await cookies()
+
+  const existing = await prisma.user.findUnique({ where: { email } })
+  if (existing) {
+    return { error: 'An account with this email already exists' }
+  }
+
+  const userId = generateId()
+
+  await prisma.user.create({
+    data: { id: userId, email },
+  })
+
+  await ensureUserProfile(userId, displayName || email.split('@')[0])
+
+  cookieStore.set('local_user_id', userId, { path: '/', maxAge: 60 * 60 * 24 * 30 })
+  cookieStore.set('local_user_email', email, { path: '/', maxAge: 60 * 60 * 24 * 30 })
+
+  return { success: true, userId }
+}
+
+export async function loginWithEmail(formData: FormData) {
+  const email = formData.get('email') as string
+  const password = formData.get('password') as string
+
+  if (!email) return { error: 'Email is required' }
+
+  const cookieStore = await cookies()
+  const user = await prisma.user.findUnique({ where: { email } })
+
+  if (!user) {
+    return { error: 'No account found with this email. Try demo mode or create an account.' }
+  }
+
+  cookieStore.set('local_user_id', user.id, { path: '/', maxAge: 60 * 60 * 24 * 30 })
+  cookieStore.set('local_user_email', email, { path: '/', maxAge: 60 * 60 * 24 * 30 })
+
+  return { success: true, userId: user.id }
 }

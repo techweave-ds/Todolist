@@ -2,16 +2,20 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase'
+import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 
 export default function AuthCallbackPage() {
   const router = useRouter()
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!isSupabaseConfigured || !supabase) {
+      router.push('/dashboard')
+      return
+    }
     const handleCallback = async () => {
       try {
-        const { data, error } = await supabase.auth.getSession()
+        const { data, error } = await supabase!.auth.getSession()
         if (error) {
           setError('Authentication failed')
           return

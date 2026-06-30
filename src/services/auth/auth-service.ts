@@ -1,8 +1,11 @@
-import { supabase } from '@/lib/supabase'
+import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { handleServiceError } from '@/lib/service-error'
 
 export class AuthService {
   async loginWithEmail(email: string, password: string) {
+    if (!isSupabaseConfigured || !supabase) {
+      throw new Error('Supabase not configured. Use demo mode or set environment variables.')
+    }
     try {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password })
       if (error) throw error
@@ -13,6 +16,9 @@ export class AuthService {
   }
 
   async loginWithGoogle() {
+    if (!isSupabaseConfigured || !supabase) {
+      throw new Error('Supabase not configured.')
+    }
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
@@ -26,6 +32,9 @@ export class AuthService {
   }
 
   async loginWithGithub() {
+    if (!isSupabaseConfigured || !supabase) {
+      throw new Error('Supabase not configured.')
+    }
     try {
       const { data, error } = await supabase.auth.signInWithOAuth({
         provider: 'github',
@@ -39,6 +48,9 @@ export class AuthService {
   }
 
   async sendMagicLink(email: string) {
+    if (!isSupabaseConfigured || !supabase) {
+      throw new Error('Supabase not configured.')
+    }
     try {
       const { data, error } = await supabase.auth.signInWithOtp({
         email,
@@ -52,6 +64,9 @@ export class AuthService {
   }
 
   async register(email: string, password: string, displayName?: string) {
+    if (!isSupabaseConfigured || !supabase) {
+      throw new Error('Supabase not configured.')
+    }
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
@@ -66,6 +81,9 @@ export class AuthService {
   }
 
   async logout() {
+    if (!isSupabaseConfigured || !supabase) {
+      return
+    }
     try {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
@@ -75,6 +93,9 @@ export class AuthService {
   }
 
   async getSession() {
+    if (!isSupabaseConfigured || !supabase) {
+      return null
+    }
     try {
       const { data, error } = await supabase.auth.getSession()
       if (error) throw error
@@ -85,6 +106,9 @@ export class AuthService {
   }
 
   async getUser() {
+    if (!isSupabaseConfigured || !supabase) {
+      return null
+    }
     try {
       const { data, error } = await supabase.auth.getUser()
       if (error) throw error

@@ -1,24 +1,38 @@
 'use client'
 
 import { useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { useAppStore } from '@/store/app-store'
 import { ensureUserProfile } from '@/app/actions'
 import { DEMO_COOKIE } from '@/lib/demo'
+
+function getCookie(name: string): string | null {
+  if (typeof document === 'undefined') return null
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))
+  return match ? decodeURIComponent(match[1]) : null
+}
 
 export function SessionInitializer() {
   const setUserId = useAppStore(s => s.setUserId)
   const setDemoMode = useAppStore(s => s.setDemoMode)
 
   useEffect(() => {
-    if (document.cookie.includes(`${DEMO_COOKIE}=true`)) {
+    if (getCookie(DEMO_COOKIE) === 'true') {
       setDemoMode()
       return
     }
 
+    const localUserId = getCookie('local_user_id')
+    if (localUserId) {
+      setUserId(localUserId)
+      return
+    }
+
+    if (!isSupabaseConfigured || !supabase) return
+
     const init = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession()
+        const { data: { session }, error } = await supabase!.auth.getSession()
         if (error) return
         if (session?.user) {
           setUserId(session.user.id)
@@ -29,12 +43,12 @@ export function SessionInitializer() {
           }
         }
       } catch {
-        // silent — session may not be available yet
+        // silent
       }
     }
     init()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase!.auth.onAuthStateChange(async (event, session) => {
       const id = session?.user?.id ?? null
       setUserId(id)
       if (id && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {

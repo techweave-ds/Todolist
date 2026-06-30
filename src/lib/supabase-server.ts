@@ -1,7 +1,12 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
+import { isSupabaseConfigured } from './supabase'
 
 export async function createSupabaseServerClient() {
+  if (!isSupabaseConfigured) {
+    throw new Error('Supabase not configured. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY.')
+  }
+
   const cookieStore = await cookies()
 
   return createServerClient(

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Rocket, GitBranch, Mail, Eye, Info } from 'lucide-react'
 import { authService } from '@/services/auth'
-import { startDemo } from '@/app/actions'
+import { startDemo, loginWithEmail as localLogin } from '@/app/actions'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -19,8 +19,15 @@ export default function LoginPage() {
     setIsLoading(true)
     setError(null)
     try {
-      await authService.loginWithEmail(email, password)
-      router.push('/dashboard')
+      const form = new FormData()
+      form.set('email', email)
+      form.set('password', password)
+      const result = await localLogin(form)
+      if (result.error) {
+        setError(result.error)
+      } else {
+        router.push('/dashboard')
+      }
     } catch {
       setError('Invalid email or password')
     } finally {

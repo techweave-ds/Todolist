@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Rocket } from 'lucide-react'
-import { authService } from '@/services/auth'
+import { registerUser } from '@/app/actions'
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -17,9 +17,19 @@ export default function RegisterPage() {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
+
+    const form = new FormData()
+    form.set('email', email)
+    form.set('password', password)
+    form.set('name', name || email.split('@')[0])
+
     try {
-      await authService.register(email, password, name)
-      router.push('/dashboard')
+      const result = await registerUser(form)
+      if (result.error) {
+        setError(result.error)
+      } else {
+        router.push('/dashboard')
+      }
     } catch {
       setError('Failed to create account')
     } finally {
@@ -54,6 +64,7 @@ export default function RegisterPage() {
             value={email}
             onChange={e => setEmail(e.target.value)}
             className="w-full px-4 py-2.5 rounded-lg bg-muted/50 border outline-none focus:ring-2 focus:ring-primary/50 text-sm transition-all"
+            required
           />
         </div>
         <div>
@@ -63,6 +74,8 @@ export default function RegisterPage() {
             value={password}
             onChange={e => setPassword(e.target.value)}
             className="w-full px-4 py-2.5 rounded-lg bg-muted/50 border outline-none focus:ring-2 focus:ring-primary/50 text-sm transition-all"
+            required
+            minLength={6}
           />
         </div>
         <button
@@ -75,7 +88,7 @@ export default function RegisterPage() {
       </form>
 
       {error && (
-        <p className="text-sm text-center mt-4 text-accent">{error}</p>
+        <p className="text-sm text-center mt-4 text-red-400">{error}</p>
       )}
 
       <p className="text-center text-sm text-muted-foreground mt-6">

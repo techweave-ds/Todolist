@@ -24,8 +24,23 @@ export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
   const isDemo = request.cookies.get(DEMO_COOKIE)?.value === 'true'
+  const localUserId = request.cookies.get('local_user_id')?.value
+  const hasSupabase = !!process.env.NEXT_PUBLIC_SUPABASE_URL && !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  if (isDemo) {
+  if (isDemo || localUserId) {
+    return supabaseResponse
+  }
+
+  if (!hasSupabase && !isDemo && !localUserId) {
+    const pathname = request.nextUrl.pathname
+    const isPublic = publicRoutes.some(route => pathname === route || pathname.startsWith('/api/') || pathname.startsWith('/_next/'))
+    if (!isPublic) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/login'
+      supabaseResponse.headers.set('Content-Security-Policy', cspHeader.replace(/\s{2,}/g, ' ').trim())
+      return NextResponse.redirect(url)
+    }
+    supabaseResponse.headers.set('Content-Security-Policy', cspHeader.replace(/\s{2,}/g, ' ').trim())
     return supabaseResponse
   }
 
