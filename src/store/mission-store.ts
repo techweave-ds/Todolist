@@ -7,6 +7,7 @@ import {
   completeMissionAction,
   deleteMissionAction,
 } from '@/app/actions'
+import { eventBus } from '@/core/events'
 
 interface Mission {
   id: string
@@ -95,6 +96,7 @@ export const useMissionStore = create<MissionState>((set, get) => ({
       missions: state.missions.map(m => m.id === id ? { ...m, ...result.data } : m),
       selectedMission: state.selectedMission?.id === id ? result.data : state.selectedMission,
     }))
+    eventBus.emit({ type: 'MISSION_COMPLETED', payload: { missionId: id, userId } })
     return result.data as Mission | null
   },
 

@@ -5,6 +5,7 @@ import { missionService } from '@/services/missions/mission-service'
 import { campaignService } from '@/services/campaigns/campaign-service'
 import { notificationService } from '@/services/notifications/notification-service'
 import { analyticsService } from '@/services/analytics/analytics-service'
+import { rewardService } from '@/services/rewards/reward-service'
 import { xpService } from '@/services/xp/xp-service'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { DEMO_USER_ID, DEMO_COOKIE } from '@/lib/demo'
@@ -319,6 +320,9 @@ export async function completeMissionAction(id: string, userId: string): Promise
     const authUserId = await getAuthUserId()
     if (authUserId !== userId) return { error: 'Unauthorized' }
     const mission = await missionService.complete(id, userId)
+    if (mission) {
+      await rewardService.processMissionCompletion(userId, id, mission.difficulty as any)
+    }
     return { data: mission }
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error'

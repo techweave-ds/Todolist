@@ -7,6 +7,7 @@ import {
   getFocusStatisticsAction,
   getFocusWeeklyDataAction,
 } from '@/app/actions'
+import { eventBus } from '@/core/events'
 
 interface FocusSession {
   id: string
@@ -71,6 +72,7 @@ export const useFocusStore = create<FocusState>((set) => ({
     try {
       const session = await startFocusSessionAction(input, userId) as FocusSession
       set({ currentSession: session, isActive: true, isLoading: false })
+      eventBus.emit({ type: 'FOCUS_STARTED', payload: { userId, sessionId: session.id, duration: input.duration || 0, completed: false } })
     } catch {
       set({ error: 'Failed to start session', isLoading: false })
     }
@@ -81,6 +83,7 @@ export const useFocusStore = create<FocusState>((set) => ({
     try {
       const session = await endFocusSessionAction(sessionId, userId, { actualDuration, completed, distractions }) as FocusSession
       set({ currentSession: session, isActive: false, timeRemaining: 0, isLoading: false })
+      eventBus.emit({ type: 'FOCUS_ENDED', payload: { userId, sessionId, duration: actualDuration, completed } })
     } catch {
       set({ error: 'Failed to end session', isLoading: false })
     }
