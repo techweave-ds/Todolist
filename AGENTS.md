@@ -30,4 +30,16 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - Navigation rebranded from "Mission Control OS" to "Quiet Panda"
 - All sections use `framer-motion` scroll-triggered animations
 - All sections are responsive
+
+## Ian Xiaohei Illustrations Skill Integration
+- Created opencode skill at `~/.config/opencode/skills/ian-xiaohei-illustrations/` based on [helloianneo/ian-xiaohei-illustrations](https://github.com/helloianneo/ian-xiaohei-illustrations) — Chinese hand-drawn illustration generation in Xiaohei style
+- Skill includes: SKILL.md, style-dna.md, xiaohei-ip.md, composition-patterns.md, prompt-template.md, qa-checklist.md
+- Generated 6 Xiaohei-style illustration briefs for Quiet Panda:
+  - **01-missions.md** — 任务变任务书 (Workflow: sticky notes → mission machine → XP document)
+  - **02-workspace.md** — 小黑工位长出来了 (Before/after: empty room → grown workspace with plants, monitors, trophies)
+  - **03-ai-coach.md** — AI 拆目标 (Workflow: big goal ball → postbox machine → weekly plan blocks)
+  - **04-focus.md** — 专注模式小黑戴头盔 (Mini comic: info bombardment → welding helmet deep flow)
+  - **05-xp-level.md** — XP 升级梯子 (Metaphor: curved ladder with XP rungs, 小黑 climbing)
+  - **06-memory-lane.md** — 小黑回头看 (Map route: winding path of milestones, 小黑 looking back)
+- Prompts saved to `public/illustrations/` for direct use with image generators
 <!-- END:anchored-summary -->
