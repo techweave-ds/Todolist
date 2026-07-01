@@ -1,7 +1,10 @@
 'use client'
 
+import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
+import { audioEngine } from '@/audio/engine/audio-engine'
+import { registerAllSubscribers } from '@/core/events/subscribers'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
 import { CommandPalette } from '@/components/layout/command-palette'
@@ -15,6 +18,19 @@ export default function AppLayout({
   children: React.ReactNode
 }) {
   const pathname = usePathname()
+
+  useEffect(() => {
+    audioEngine.init()
+    registerAllSubscribers()
+
+    const resume = () => audioEngine.resumeContext()
+    document.addEventListener('click', resume, { once: true })
+    document.addEventListener('keydown', resume, { once: true })
+    return () => {
+      document.removeEventListener('click', resume)
+      document.removeEventListener('keydown', resume)
+    }
+  }, [])
 
   return (
     <div className="min-h-screen relative">

@@ -59,6 +59,12 @@ class AudioEngineImpl {
     }
   }
 
+  resumeContext(): void {
+    if (this.ctx?.state === 'suspended') {
+      this.ctx.resume();
+    }
+  }
+
   private getBus(type: BusType): GainNode | null {
     return this.buses.get(type)?.gain ?? null;
   }
@@ -136,7 +142,7 @@ class AudioEngineImpl {
           { time: 0, freq: 523 },
           { time: 0.1, freq: 659 },
           { time: 0.2, freq: 784 },
-        ], 'sine', 0.4, 'sfx', 0.3);
+        ], 'sine', 0.4, 'sfx', 0.6);
         break;
 
       case 'level_up':
@@ -145,7 +151,7 @@ class AudioEngineImpl {
           { time: 0.15, freq: 554 },
           { time: 0.3, freq: 659 },
           { time: 0.45, freq: 880 },
-        ], 'sine', 0.6, 'sfx', 0.35);
+        ], 'sine', 0.6, 'sfx', 0.7);
         break;
 
       case 'achievement':
@@ -154,7 +160,7 @@ class AudioEngineImpl {
           { time: 0.12, freq: 659 },
           { time: 0.24, freq: 784 },
           { time: 0.36, freq: 1047 },
-        ], 'sine', 0.5, 'sfx', 0.35);
+        ], 'sine', 0.5, 'sfx', 0.7);
         break;
 
       case 'xp_gain':
@@ -162,14 +168,14 @@ class AudioEngineImpl {
           { time: 0, freq: 440 },
           { time: 0.06, freq: 554 },
           { time: 0.12, freq: 659 },
-        ], 'sine', 0.25, 'sfx', 0.2);
+        ], 'sine', 0.25, 'sfx', 0.5);
         break;
 
       case 'focus_start':
         this.scheduleFrequencies([
           { time: 0, freq: 330 },
           { time: 0.5, freq: 220 },
-        ], 'triangle', 1.5, 'sfx', 0.2);
+        ], 'triangle', 1.5, 'sfx', 0.5);
         break;
 
       case 'focus_end':
@@ -177,7 +183,7 @@ class AudioEngineImpl {
           { time: 0, freq: 220 },
           { time: 0.25, freq: 330 },
           { time: 0.5, freq: 440 },
-        ], 'triangle', 0.8, 'sfx', 0.2);
+        ], 'triangle', 0.8, 'sfx', 0.5);
         break;
 
       case 'capsule_open':
@@ -187,7 +193,7 @@ class AudioEngineImpl {
           { time: 0.16, freq: 659 },
           { time: 0.24, freq: 784 },
           { time: 0.32, freq: 1047 },
-        ], 'sine', 0.5, 'sfx', 0.3);
+        ], 'sine', 0.5, 'sfx', 0.6);
         break;
 
       case 'streak_updated':
@@ -195,32 +201,32 @@ class AudioEngineImpl {
           { time: 0, freq: 440 },
           { time: 0.1, freq: 554 },
           { time: 0.2, freq: 659 },
-        ], 'sine', 0.35, 'sfx', 0.25);
+        ], 'sine', 0.35, 'sfx', 0.55);
         break;
 
       case 'campaign_complete': {
         const notes = [262, 330, 392, 523, 659, 784, 1047];
         notes.forEach((freq, i) => {
-          this.createOscillator(freq, 'sine', now + i * 0.08, 0.5, 'sfx', 0.25);
+          this.createOscillator(freq, 'sine', now + i * 0.08, 0.5, 'sfx', 0.55);
         });
         break;
       }
 
       case 'daily_briefing':
-        this.createOscillator(528, 'sine', now, 0.15, 'sfx', 0.2);
-        this.createOscillator(660, 'sine', now + 0.12, 0.15, 'sfx', 0.2);
-        this.createOscillator(792, 'sine', now + 0.24, 0.3, 'sfx', 0.2);
+        this.createOscillator(528, 'sine', now, 0.15, 'sfx', 0.5);
+        this.createOscillator(660, 'sine', now + 0.12, 0.15, 'sfx', 0.5);
+        this.createOscillator(792, 'sine', now + 0.24, 0.3, 'sfx', 0.5);
         break;
 
       case 'workspace_upgrade':
-        this.createOscillator(350, 'sawtooth', now, 0.1, 'sfx', 0.15);
-        this.createOscillator(700, 'sawtooth', now + 0.08, 0.1, 'sfx', 0.15);
-        this.createOscillator(1050, 'sawtooth', now + 0.16, 0.2, 'sfx', 0.15);
+        this.createOscillator(350, 'sawtooth', now, 0.1, 'sfx', 0.4);
+        this.createOscillator(700, 'sawtooth', now + 0.08, 0.1, 'sfx', 0.4);
+        this.createOscillator(1050, 'sawtooth', now + 0.16, 0.2, 'sfx', 0.4);
         break;
 
       case 'notification':
-        this.createOscillator(800, 'sine', now, 0.08, 'ui', 0.15);
-        this.createOscillator(1000, 'sine', now + 0.12, 0.08, 'ui', 0.15);
+        this.createOscillator(800, 'sine', now, 0.08, 'ui', 0.4);
+        this.createOscillator(1000, 'sine', now + 0.12, 0.08, 'ui', 0.4);
         break;
     }
   }
@@ -262,13 +268,13 @@ class AudioEngineImpl {
         filter.type = 'lowpass';
         filter.frequency.value = 300;
         filter.Q.value = 1.5;
-        gain.gain.value = 0.12;
+        gain.gain.value = 0.35;
 
         const drone = this.ctx.createOscillator();
         const droneGain = this.ctx.createGain();
         drone.type = 'sine';
         drone.frequency.value = 432;
-        droneGain.gain.value = 0.04;
+        droneGain.gain.value = 0.12;
         drone.connect(droneGain);
         droneGain.connect(ambientBus);
         drone.start();
@@ -282,13 +288,13 @@ class AudioEngineImpl {
         filter.type = 'bandpass';
         filter.frequency.value = 800;
         filter.Q.value = 0.7;
-        gain.gain.value = 0.08;
+        gain.gain.value = 0.25;
 
         const drone = this.ctx.createOscillator();
         const droneGain = this.ctx.createGain();
         drone.type = 'sine';
         drone.frequency.value = 528;
-        droneGain.gain.value = 0.03;
+        droneGain.gain.value = 0.1;
         drone.connect(droneGain);
         droneGain.connect(ambientBus);
         drone.start();
@@ -302,11 +308,11 @@ class AudioEngineImpl {
         filter.type = 'highpass';
         filter.frequency.value = 2000;
         filter.Q.value = 0.5;
-        gain.gain.value = 0.2;
+        gain.gain.value = 0.45;
 
         lfo.type = 'sine';
         lfo.frequency.value = 0.3;
-        lfoGain.gain.value = 0.05;
+        lfoGain.gain.value = 0.1;
         lfo.connect(lfoGain);
         lfoGain.connect(gain.gain);
         lfo.start();
@@ -320,7 +326,7 @@ class AudioEngineImpl {
         filter.type = 'bandpass';
         filter.frequency.value = 500;
         filter.Q.value = 1.0;
-        gain.gain.value = 0.1;
+        gain.gain.value = 0.3;
 
         const chirp = (delay: number, f1: number, f2: number) => {
           const chirpOsc = this.ctx!.createOscillator();
@@ -329,7 +335,7 @@ class AudioEngineImpl {
           chirpOsc.frequency.setValueAtTime(f1, now + delay);
           chirpOsc.frequency.linearRampToValueAtTime(f2, now + delay + 0.15);
           chirpGain.gain.setValueAtTime(0, now + delay);
-          chirpGain.gain.linearRampToValueAtTime(0.06, now + delay + 0.02);
+          chirpGain.gain.linearRampToValueAtTime(0.12, now + delay + 0.02);
           chirpGain.gain.linearRampToValueAtTime(0, now + delay + 0.15);
           chirpOsc.connect(chirpGain);
           chirpGain.connect(ambientBus);
@@ -359,11 +365,11 @@ class AudioEngineImpl {
         filter.type = 'lowpass';
         filter.frequency.value = 600;
         filter.Q.value = 0.3;
-        gain.gain.value = 0.18;
+        gain.gain.value = 0.4;
 
         lfo.type = 'sine';
         lfo.frequency.value = 0.08;
-        lfoGain.gain.value = 0.1;
+        lfoGain.gain.value = 0.2;
         lfo.connect(lfoGain);
         lfoGain.connect(gain.gain);
         lfo.start();
@@ -377,12 +383,12 @@ class AudioEngineImpl {
         filter.type = 'bandpass';
         filter.frequency.value = 1500;
         filter.Q.value = 0.4;
-        gain.gain.value = 0.06;
+        gain.gain.value = 0.2;
 
         const clatter = () => {
           if (this.currentAmbient !== 'cafe') return;
           const cGain = this.ctx!.createGain();
-          cGain.gain.setValueAtTime(0.08, this.ctx!.currentTime);
+          cGain.gain.setValueAtTime(0.2, this.ctx!.currentTime);
           cGain.gain.exponentialRampToValueAtTime(0.001, this.ctx!.currentTime + 0.08);
           const cBuf = createNoiseBuffer(sampleRate * 0.08);
           const cSrc = this.ctx!.createBufferSource();
@@ -411,13 +417,13 @@ class AudioEngineImpl {
         filter.type = 'bandpass';
         filter.frequency.value = 1200;
         filter.Q.value = 2.0;
-        gain.gain.value = 0.04;
+        gain.gain.value = 0.15;
 
         const pop = () => {
           if (this.currentAmbient !== 'bubble_pop') return;
           const pGain = this.ctx!.createGain();
           const t = this.ctx!.currentTime;
-          pGain.gain.setValueAtTime(0.1, t);
+          pGain.gain.setValueAtTime(0.25, t);
           pGain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
           const pBuf = createNoiseBuffer(sampleRate * 0.12);
           const pSrc = this.ctx!.createBufferSource();
@@ -447,13 +453,13 @@ class AudioEngineImpl {
         filter.type = 'lowpass';
         filter.frequency.value = 200;
         filter.Q.value = 1.0;
-        gain.gain.value = 0.03;
+        gain.gain.value = 0.12;
 
         const beat = () => {
           if (this.currentAmbient !== 'lo_fi') return;
           const bGain = this.ctx!.createGain();
           const t = this.ctx!.currentTime;
-          bGain.gain.setValueAtTime(0.06, t);
+          bGain.gain.setValueAtTime(0.18, t);
           bGain.gain.exponentialRampToValueAtTime(0.001, t + 0.15);
           const bBuf = createNoiseBuffer(sampleRate * 0.15);
           const bSrc = this.ctx!.createBufferSource();
