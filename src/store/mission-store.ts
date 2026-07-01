@@ -61,13 +61,14 @@ export const useMissionStore = create<MissionState>((set, get) => ({
   },
 
   createMission: async (input: MissionCreateInput, userId: string) => {
-    set({ isLoading: true, error: null })
+    set({ error: null })
     try {
       const mission = await createMissionAction(input, userId)
-      set(state => ({ missions: [mission, ...state.missions], isLoading: false }))
+      set(state => ({ missions: [mission, ...state.missions] }))
       return mission
-    } catch {
-      set({ error: 'Failed to create mission', isLoading: false })
+    } catch (e: any) {
+      const msg = e?.message || 'Unknown error'
+      set({ error: `Failed to create mission: ${msg}` })
       return null
     }
   },

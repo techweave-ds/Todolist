@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useAIStore } from '@/store/ai-store'
 import { useMissionStore } from '@/store/mission-store'
 import { useAppStore } from '@/store/app-store'
@@ -17,8 +18,6 @@ export function GoalBreakdown({ open, onClose }: Props) {
   const { createMission } = useMissionStore()
   const [goal, setGoal] = useState('')
   const [creating, setCreating] = useState<string | null>(null)
-
-  if (!open) return null
 
   const handleBreakdown = async () => {
     if (!goal.trim()) return
@@ -50,9 +49,30 @@ export function GoalBreakdown({ open, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-lg glass-strong rounded-2xl shadow-2xl animate-scale-in p-6">
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        >
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={onClose}
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.92, y: 10 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="relative w-full max-w-lg glass-strong rounded-2xl shadow-2xl p-6"
+          >
         <button onClick={onClose} className="absolute top-4 right-4 p-1 rounded-md hover:bg-muted/50">
           <X className="w-4 h-4" />
         </button>
@@ -130,7 +150,9 @@ export function GoalBreakdown({ open, onClose }: Props) {
             </div>
           </div>
         )}
-      </div>
-    </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   )
 }

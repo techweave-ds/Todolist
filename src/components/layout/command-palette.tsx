@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useRouter } from 'next/navigation'
 import { Search, Target, Flag, Brain, Trophy, BarChart3, History } from 'lucide-react'
 import { useAppStore } from '@/store/app-store'
@@ -68,12 +69,31 @@ export function CommandPalette() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [isCommandPaletteOpen, filtered, selectedIndex, execute, toggleCommandPalette])
 
-  if (!isCommandPaletteOpen) return null
-
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]">
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={toggleCommandPalette} />
-      <div className="relative w-full max-w-lg glass-strong rounded-2xl shadow-2xl overflow-hidden animate-scale-in">
+    <AnimatePresence>
+      {isCommandPaletteOpen && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-50 flex items-start justify-center pt-[15vh]"
+        >
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={toggleCommandPalette}
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.92, y: 10 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="relative w-full max-w-lg glass-strong rounded-2xl shadow-2xl overflow-hidden"
+          >
         <div className="flex items-center gap-3 px-4 py-3 border-b">
           <Search className="w-4 h-4 text-muted-foreground" />
           <input
@@ -104,8 +124,10 @@ export function CommandPalette() {
           {filtered.length === 0 && (
             <p className="text-sm text-muted-foreground text-center py-8">No results found</p>
           )}
-        </div>
-      </div>
-    </div>
+          </div>
+        </motion.div>
+      </motion.div>
+    )}
+    </AnimatePresence>
   )
 }

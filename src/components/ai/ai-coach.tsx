@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useAIStore } from '@/store/ai-store'
 import { useAppStore } from '@/store/app-store'
 import { useAudioStore } from '@/store/audio-store'
@@ -44,8 +45,6 @@ export function AICoach({ open, onClose }: Props) {
     return () => stopSpeaking()
   }, [coachMessages, voiceEnabled]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (!open) return null
-
   const handleSend = () => {
     if (!input.trim() || coachLoading) return
     if (!userId) return
@@ -61,9 +60,30 @@ export function AICoach({ open, onClose }: Props) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative w-full max-w-lg h-[600px] glass-strong rounded-2xl shadow-2xl animate-scale-in flex flex-col">
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+        >
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+            onClick={onClose}
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.92, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.92, y: 10 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="relative w-full max-w-lg h-[600px] glass-strong rounded-2xl shadow-2xl flex flex-col"
+          >
         <div className="flex items-center justify-between p-4 border-b shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -145,9 +165,11 @@ export function AICoach({ open, onClose }: Props) {
             >
               <Send className="w-4 h-4" />
             </button>
+            </div>
           </div>
-        </div>
-      </div>
-    </div>
+        </motion.div>
+      </motion.div>
+    )}
+    </AnimatePresence>
   )
 }

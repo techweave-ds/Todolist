@@ -11,6 +11,7 @@ export default function CampaignsPage() {
   const { userId } = useAppStore()
   const [showCreate, setShowCreate] = useState(false)
   const [creating, setCreating] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [emoji, setEmoji] = useState('🎯')
@@ -137,7 +138,17 @@ export default function CampaignsPage() {
                     )}
                   </div>
                 </div>
-                <button onClick={() => userId && deleteCampaign(campaign.id, userId)} className="p-1 rounded hover:bg-muted/50" aria-label="Delete campaign">
+                <button
+                  onClick={async () => {
+                    if (!userId || deletingId) return
+                    setDeletingId(campaign.id)
+                    await deleteCampaign(campaign.id, userId)
+                    setDeletingId(null)
+                  }}
+                  disabled={deletingId === campaign.id}
+                  className="p-1 rounded hover:bg-muted/50 disabled:opacity-40"
+                  aria-label="Delete campaign"
+                >
                   <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
                 </button>
               </div>

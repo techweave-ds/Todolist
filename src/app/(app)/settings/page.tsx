@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useAudioStore } from '@/store/audio-store'
 import { useAppStore } from '@/store/app-store'
-import { Volume2, Music, Bell, Zap, Palette, Shield, Headphones, Mic, Radio, Sparkles, Play } from 'lucide-react'
+import { Volume2, Music, Bell, Zap, Palette, Shield, Headphones, Mic, Radio, Sparkles, Play, Check } from 'lucide-react'
 import type { BusType, SoundName } from '@/audio/engine/audio-engine'
 
 export default function SettingsPage() {
@@ -11,6 +11,24 @@ export default function SettingsPage() {
   const { isEnabled, volumes, currentAmbient, activeProfile, premiumUnlocked, setEnabled, setBusVolume, setActiveProfile, playEffect, playAmbient, stopAmbient, getSoundProfiles, getAmbientEnvironments, loadPreferences, savePreferences } = useAudioStore()
   const [activeTab, setActiveTab] = useState('audio')
   const [selectedPreview, setSelectedPreview] = useState<SoundName | null>(null)
+  const [preferences, setPreferences] = useState<Record<string, boolean>>({
+    missionReminders: true,
+    achievementAlerts: true,
+    streakNotifications: true,
+    dailyBriefing: true,
+    focusReminders: true,
+  })
+  const [privacySettings, setPrivacySettings] = useState<Record<string, boolean>>({
+    analyticsCollection: true,
+    aiProcessing: true,
+    exportData: false,
+  })
+
+  const handleThemeChange = (themeId: string) => {
+    const isDark = themeId !== 'minimal'
+    document.documentElement.classList.toggle('dark', isDark)
+    localStorage.setItem('theme', themeId)
+  }
   useEffect(() => {
     if (userId) loadPreferences(userId)
   }, [userId, loadPreferences])
@@ -201,7 +219,10 @@ export default function SettingsPage() {
               <p className="text-xs text-muted-foreground mb-3">
                 Unlock premium environments (Ocean, Café) and premium sound profile for an immersive experience.
               </p>
-              <button className="px-4 py-2 rounded-lg bg-gradient-to-r from-yellow-500 to-amber-600 text-white text-xs font-medium hover:opacity-90">
+              <button
+                onClick={() => alert('Premium is coming soon. Stay tuned!')}
+                className="px-4 py-2 rounded-lg bg-gradient-to-r from-yellow-500 to-amber-600 text-white text-xs font-medium hover:opacity-90"
+              >
                 Unlock Premium
               </button>
             </div>
@@ -224,6 +245,7 @@ export default function SettingsPage() {
               ].map(theme => (
                 <button
                   key={theme.id}
+                  onClick={() => handleThemeChange(theme.id)}
                   className={`glass rounded-xl p-3 text-center hover:scale-[1.02] transition-all`}
                 >
                   <div className={`w-full h-12 rounded-lg bg-gradient-to-br ${theme.gradient} mb-2`} />
@@ -240,19 +262,22 @@ export default function SettingsPage() {
           <h3 className="text-sm font-medium mb-4">Notification Preferences</h3>
           <div className="space-y-4">
             {[
-              { label: 'Mission Reminders', desc: 'Get reminded about upcoming deadlines' },
-              { label: 'Achievement Alerts', desc: 'Celebrate when you unlock achievements' },
-              { label: 'Streak Notifications', desc: 'Stay on top of your streaks' },
-              { label: 'Daily Briefing', desc: 'Receive a daily summary every morning' },
-              { label: 'Focus Session Reminders', desc: 'Remind you to take breaks' },
+              { key: 'missionReminders', label: 'Mission Reminders', desc: 'Get reminded about upcoming deadlines' },
+              { key: 'achievementAlerts', label: 'Achievement Alerts', desc: 'Celebrate when you unlock achievements' },
+              { key: 'streakNotifications', label: 'Streak Notifications', desc: 'Stay on top of your streaks' },
+              { key: 'dailyBriefing', label: 'Daily Briefing', desc: 'Receive a daily summary every morning' },
+              { key: 'focusReminders', label: 'Focus Session Reminders', desc: 'Remind you to take breaks' },
             ].map((pref) => (
-              <div key={pref.label} className="flex items-center justify-between">
+              <div key={pref.key} className="flex items-center justify-between">
                 <div>
                   <span className="text-sm">{pref.label}</span>
                   <p className="text-xs text-muted-foreground">{pref.desc}</p>
                 </div>
-                <button className="relative w-10 h-5 rounded-full bg-primary">
-                  <div className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-white" />
+                <button
+                  onClick={() => setPreferences(p => ({ ...p, [pref.key]: !p[pref.key] }))}
+                  className={`relative w-10 h-5 rounded-full transition-colors ${preferences[pref.key] ? 'bg-primary' : 'bg-muted'}`}
+                >
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${preferences[pref.key] ? 'translate-x-5' : 'translate-x-0.5'}`} />
                 </button>
               </div>
             ))}
@@ -265,17 +290,26 @@ export default function SettingsPage() {
           <h3 className="text-sm font-medium mb-4">Privacy & Data</h3>
           <div className="space-y-4">
             {[
-              { label: 'Analytics Collection', desc: 'Help us improve with usage data' },
-              { label: 'AI Processing', desc: 'Allow AI features to process your data' },
-              { label: 'Export Data', desc: 'Download all your mission data' },
+              { key: 'analyticsCollection', label: 'Analytics Collection', desc: 'Help us improve with usage data' },
+              { key: 'aiProcessing', label: 'AI Processing', desc: 'Allow AI features to process your data' },
+              { key: 'exportData', label: 'Export Data', desc: 'Download all your mission data' },
             ].map((item) => (
-              <div key={item.label} className="flex items-center justify-between">
+              <div key={item.key} className="flex items-center justify-between">
                 <div>
                   <span className="text-sm">{item.label}</span>
                   <p className="text-xs text-muted-foreground">{item.desc}</p>
                 </div>
-                <button className="relative w-10 h-5 rounded-full bg-primary">
-                  <div className="absolute top-0.5 right-0.5 w-4 h-4 rounded-full bg-white" />
+                <button
+                  onClick={() => {
+                    if (item.key === 'exportData') {
+                      alert('Data export coming soon')
+                      return
+                    }
+                    setPrivacySettings(p => ({ ...p, [item.key]: !p[item.key] }))
+                  }}
+                  className={`relative w-10 h-5 rounded-full transition-colors ${privacySettings[item.key] ? 'bg-primary' : 'bg-muted'}`}
+                >
+                  <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${privacySettings[item.key] ? 'translate-x-5' : 'translate-x-0.5'}`} />
                 </button>
               </div>
             ))}

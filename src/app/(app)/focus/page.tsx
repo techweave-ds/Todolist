@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef } from 'react'
 import { useFocusStore } from '@/store/focus-store'
 import { useAudioStore } from '@/store/audio-store'
 import { useAppStore } from '@/store/app-store'
-import { Play, Pause, Square, Coffee, Brain, Timer, Radio } from 'lucide-react'
+import { Play, Pause, Square, Coffee, Brain, Timer, Radio, Loader2 } from 'lucide-react'
 import { FOCUS } from '@/core/constants'
 
 type FocusMode = 'pomodoro' | 'short_break' | 'long_break' | 'custom'
@@ -20,6 +20,8 @@ export default function FocusPage() {
   const [distractions, setDistractions] = useState(0)
   const [ambientOpen, setAmbientOpen] = useState(false)
   const [isPaused, setIsPaused] = useState(false)
+  const [starting, setStarting] = useState(false)
+  const [ending, setEnding] = useState(false)
   const endedRef = useRef(false)
 
   const getDuration = useCallback((m: FocusMode) => {
@@ -65,7 +67,8 @@ export default function FocusPage() {
   }, [isActive, timeRemaining, currentSession, mode, getDuration, endSession, distractions, userId])
 
   const handleStart = async () => {
-    if (!userId) return
+    if (!userId || starting) return
+    setStarting(true)
     const duration = getDuration(mode)
     const sessionType = mode === 'pomodoro' ? 'pomodoro' : mode === 'custom' ? 'custom' : 'deep_focus'
     await startSession({ type: sessionType, duration: mode === 'custom' ? customMinutes : duration }, userId)
@@ -73,6 +76,7 @@ export default function FocusPage() {
     if (sessionType === 'deep_focus' && !currentAmbient) {
       await playAmbient('focus_deep')
     }
+    setStarting(false)
   }
 
   const handlePause = () => {
@@ -80,13 +84,15 @@ export default function FocusPage() {
   }
 
   const handleStop = async () => {
-    if (!userId || !currentSession) return
+    if (!userId || !currentSession || ending) return
+    setEnding(true)
     const elapsed = getDuration(mode) * 60 - timeRemaining
     const actualMinutes = Math.ceil(elapsed / 60)
     await endSession(currentSession.id, userId, actualMinutes, false, distractions)
     if (currentAmbient) {
       stopAmbient()
     }
+    setEnding(false)
   }
 
   const minutesDisplay = String(minutes).padStart(2, '0')
@@ -180,9 +186,9 @@ export default function FocusPage() {
 
           <div className="flex justify-center gap-4">
             {!isActive ? (
-              <button onClick={handleStart} className="flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity">
-                <Play className="w-5 h-5" />
-                Start
+              <button onClick={handleStart} disabled={starting} className="flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
+                {starting ? <Loader2 className="w-5 h-5 animate-spin" /> : <Play className="w-5 h-5" />}
+                {starting ? 'Starting...' : 'Start'}
               </button>
             ) : (
               <>
@@ -190,9 +196,9 @@ export default function FocusPage() {
                   {isPaused ? <Play className="w-5 h-5" /> : <Pause className="w-5 h-5" />}
                   {isPaused ? 'Resume' : 'Pause'}
                 </button>
-                <button onClick={handleStop} className="flex items-center gap-2 px-6 py-3 rounded-xl bg-red-500 text-white font-medium hover:opacity-90 transition-opacity">
-                  <Square className="w-5 h-5" />
-                  End
+                <button onClick={handleStop} disabled={ending} className="flex items-center gap-2 px-6 py-3 rounded-xl bg-red-500 text-white font-medium hover:opacity-90 transition-opacity disabled:opacity-50">
+                  {ending ? <Loader2 className="w-5 h-5 animate-spin" /> : <Square className="w-5 h-5" />}
+                  {ending ? 'Ending...' : 'End'}
                 </button>
               </>
             )}

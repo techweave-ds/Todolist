@@ -57,18 +57,22 @@ export default function MissionsPage() {
   const [category, setCategory] = useState('')
   const [completedXP, setCompletedXP] = useState<{ missionId: string; amount: number } | null>(null)
   const [creating, setCreating] = useState(false)
+  const [completingId, setCompletingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
 
   const triggerRefresh = useCallback(() => setRefreshKey(k => k + 1), [])
 
   const handleComplete = useCallback(async (mission: any) => {
-    if (!userId || mission.status === 'completed') return
+    if (!userId || mission.status === 'completed' || completingId) return
+    setCompletingId(mission.id)
     const result = await completeMission(mission.id, userId)
+    setCompletingId(null)
     if (result) {
       setCompletedXP({ missionId: mission.id, amount: result.xpReward })
       setTimeout(() => setCompletedXP(null), 2000)
     }
-  }, [userId, completeMission])
+  }, [userId, completeMission, completingId])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -394,14 +398,17 @@ export default function MissionsPage() {
               <div className="flex items-start gap-3">
                 <button
                   onClick={() => handleComplete(mission)}
-                  disabled={mission.status === 'completed'}
+                  disabled={mission.status === 'completed' || completingId === mission.id}
                   className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 ${
                     mission.status === 'completed'
                       ? 'border-primary bg-primary text-primary-foreground'
-                      : 'border-muted-foreground hover:border-primary'
+                      : completingId === mission.id
+                        ? 'border-muted-foreground animate-pulse'
+                        : 'border-muted-foreground hover:border-primary'
                   }`}
                 >
                   {mission.status === 'completed' && <span className="text-[10px]">✓</span>}
+                  {completingId === mission.id && <div className="w-2 h-2 rounded-full bg-primary animate-ping" />}
                 </button>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -455,7 +462,16 @@ export default function MissionsPage() {
                     onUpdate={() => userId && fetchMissions(userId)}
                   />
                 </div>
-                <button onClick={() => userId && deleteMission(mission.id, userId)} className="p-1 rounded hover:bg-muted/50 transition-colors">
+                <button
+                  onClick={async () => {
+                    if (!userId || deletingId) return
+                    setDeletingId(mission.id)
+                    await deleteMission(mission.id, userId)
+                    setDeletingId(null)
+                  }}
+                  disabled={deletingId === mission.id}
+                  className="p-1 rounded hover:bg-muted/50 transition-colors disabled:opacity-40"
+                >
                   <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
                 </button>
               </div>
