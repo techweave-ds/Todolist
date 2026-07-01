@@ -1,10 +1,25 @@
 import { create } from 'zustand'
-import { UserAchievement } from '@/core/types/achievement'
-import { achievementService } from '@/services/achievements/achievement-service'
+import { getUserAchievementsAction } from '@/app/actions'
+
+interface UserAchievement {
+  id: string
+  userId: string
+  achievementId: string
+  progress: number
+  unlockedAt: string | Date | null
+  achievement?: {
+    id: string
+    key: string
+    title: string
+    description: string | null
+    emoji: string | null
+    rarity: string
+    xpReward: number
+  }
+}
 
 interface AchievementState {
   achievements: UserAchievement[]
-  recentUnlocks: UserAchievement[]
   isLoading: boolean
   error: string | null
   fetchAchievements: (userId: string) => Promise<void>
@@ -12,20 +27,15 @@ interface AchievementState {
 
 export const useAchievementStore = create<AchievementState>((set) => ({
   achievements: [],
-  recentUnlocks: [],
   isLoading: false,
   error: null,
 
   fetchAchievements: async (userId: string) => {
     set({ isLoading: true, error: null })
     try {
-      const achievements = await achievementService.getUserAchievements(userId)
-      set({
-        achievements,
-        recentUnlocks: achievements.filter(a => a.unlockedAt).slice(0, 5),
-        isLoading: false,
-      })
-    } catch (error) {
+      const achievements = await getUserAchievementsAction(userId) as UserAchievement[]
+      set({ achievements, isLoading: false })
+    } catch {
       set({ error: 'Failed to fetch achievements', isLoading: false })
     }
   },

@@ -1,10 +1,26 @@
 import { create } from 'zustand'
 import { FocusSessionInput } from '@/core/types'
-import { FocusSession } from '@/core/types/focus'
-import { focusService } from '@/services/focus/focus-service'
+import {
+  startFocusSessionAction,
+  endFocusSessionAction,
+  getFocusSessionHistoryAction,
+  getFocusStatisticsAction,
+  getFocusWeeklyDataAction,
+} from '@/app/actions'
+
+interface FocusSession {
+  id: string
+  type: string
+  duration: number
+  actualDuration: number | null
+  completed: boolean
+  score: number | null
+  environment: string | null
+  startedAt: string | Date
+  endedAt: string | Date | null
+}
 
 interface FocusStatistics {
-  userId: string
   totalSessions: number
   totalMinutes: number
   averageScore: number
@@ -12,7 +28,6 @@ interface FocusStatistics {
   currentStreak: number
   bestStreak: number
   weeklyMinutes: number
-  monthlyMinutes: number
 }
 
 interface FocusWeeklyEntry {
@@ -22,90 +37,94 @@ interface FocusWeeklyEntry {
 }
 
 interface FocusState {
-  isActive: boolean
   currentSession: FocusSession | null
-  timeRemaining: number
   sessions: FocusSession[]
+  sessionHistory: FocusSession[]
   statistics: FocusStatistics | null
   weeklyData: FocusWeeklyEntry[]
+  isActive: boolean
+  timeRemaining: number
   isLoading: boolean
   error: string | null
   startSession: (input: FocusSessionInput, userId: string) => Promise<void>
-  endSession: (sessionId: string, userId: string, actualDuration: number, completed: boolean, distractions?: number) => Promise<void>
+  endSession: (sessionId: string, userId: string, actualDuration: number, completed: boolean, distractions: number) => Promise<void>
   fetchHistory: (userId: string) => Promise<void>
+  fetchSessionHistory: (userId: string) => Promise<void>
   fetchStats: (userId: string) => Promise<void>
   fetchWeeklyData: (userId: string) => Promise<void>
-  setTimeRemaining: (time: number) => void
-  reset: () => void
+  setTimeRemaining: (t: number) => void
 }
 
 export const useFocusStore = create<FocusState>((set) => ({
-  isActive: false,
   currentSession: null,
-  timeRemaining: 0,
   sessions: [],
+  sessionHistory: [],
   statistics: null,
   weeklyData: [],
+  isActive: false,
+  timeRemaining: 0,
   isLoading: false,
   error: null,
 
   startSession: async (input: FocusSessionInput, userId: string) => {
     set({ isLoading: true, error: null })
     try {
-      const session = await focusService.startSession(input, userId)
-      set({
-        currentSession: session,
-        isActive: true,
-        timeRemaining: input.duration * 60,
-        isLoading: false,
-      })
-    } catch (error) {
+      const session = await startFocusSessionAction(input, userId) as FocusSession
+      set({ currentSession: session, isActive: true, isLoading: false })
+    } catch {
       set({ error: 'Failed to start session', isLoading: false })
     }
   },
 
-  endSession: async (sessionId: string, userId: string, actualDuration: number, completed: boolean, distractions?: number) => {
-    set({ error: null })
+  endSession: async (sessionId: string, userId: string, actualDuration: number, completed: boolean, distractions: number) => {
+    set({ isLoading: true })
     try {
-      const session = await focusService.endSession(sessionId, userId, actualDuration, completed, distractions)
-      set(state => ({
-        currentSession: null,
-        isActive: false,
-        timeRemaining: 0,
-        sessions: [session, ...state.sessions],
-      }))
-    } catch (error) {
-      set({ error: 'Failed to end session' })
+      const session = await endFocusSessionAction(sessionId, userId, { actualDuration, completed, distractions }) as FocusSession
+      set({ currentSession: session, isActive: false, timeRemaining: 0, isLoading: false })
+    } catch {
+      set({ error: 'Failed to end session', isLoading: false })
     }
   },
 
   fetchHistory: async (userId: string) => {
+    set({ isLoading: true, error: null })
     try {
-      const sessions = await focusService.getSessionHistory(userId)
-      set({ sessions })
-    } catch (error) {
-      set({ error: 'Failed to fetch focus history' })
+      const history = await getFocusSessionHistoryAction(userId) as FocusSession[]
+      set({ sessions: history, sessionHistory: history, isLoading: false })
+    } catch {
+      set({ error: 'Failed to fetch session history', isLoading: false })
+    }
+  },
+
+  fetchSessionHistory: async (userId: string) => {
+    set({ isLoading: true, error: null })
+    try {
+      const history = await getFocusSessionHistoryAction(userId) as FocusSession[]
+      set({ sessionHistory: history, isLoading: false })
+    } catch {
+      set({ error: 'Failed to fetch session history', isLoading: false })
     }
   },
 
   fetchStats: async (userId: string) => {
+    set({ isLoading: true, error: null })
     try {
-      const statistics = await focusService.getStatistics(userId)
-      set({ statistics })
-    } catch (error) {
-      set({ error: 'Failed to fetch focus stats' })
+      const stats = await getFocusStatisticsAction(userId) as FocusStatistics
+      set({ statistics: stats, isLoading: false })
+    } catch {
+      set({ error: 'Failed to fetch statistics', isLoading: false })
     }
   },
 
   fetchWeeklyData: async (userId: string) => {
+    set({ isLoading: true, error: null })
     try {
-      const weeklyData = await focusService.getWeeklyData(userId)
-      set({ weeklyData })
-    } catch (error) {
-      set({ error: 'Failed to fetch weekly data' })
+      const data = await getFocusWeeklyDataAction(userId) as FocusWeeklyEntry[]
+      set({ weeklyData: data, isLoading: false })
+    } catch {
+      set({ error: 'Failed to fetch weekly data', isLoading: false })
     }
   },
 
-  setTimeRemaining: (time) => set({ timeRemaining: time }),
-  reset: () => set({ isActive: false, currentSession: null, timeRemaining: 0 }),
+  setTimeRemaining: (t) => set({ timeRemaining: t }),
 }))

@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client'
 import { eventBus } from '@/core/events'
 import { MissionCreateInput, MissionUpdateInput } from '@/core/types'
 import { calculateMissionXP } from '@/services/xp/xp-service'
+import { notificationService } from '@/services/notifications/notification-service'
 import { generateId } from '@/lib/utils'
 import { handleServiceError } from '@/lib/service-error'
 
@@ -24,6 +25,7 @@ export class MissionService {
           category: input.category,
           tags: input.tags || [],
           dependencies: input.dependencies || [],
+          remindAt: input.remindAt ? new Date(input.remindAt) : (input.remindBefore && input.deadline ? new Date(new Date(input.deadline).getTime() - input.remindBefore * 60000) : null),
           xpReward: calculateMissionXP(input.difficulty || 'medium'),
         },
         include: { subtasks: true, campaign: true },
@@ -32,6 +34,16 @@ export class MissionService {
       await prisma.missionHistory.create({
         data: { missionId: mission.id, userId, action: 'created' },
       })
+
+      if (mission.remindAt) {
+        notificationService.create(
+          userId,
+          'reminder',
+          `Reminder: ${input.title}`,
+          `"${input.title}" is due`,
+          { missionId: mission.id, remindAt: mission.remindAt.toISOString(), deadline: input.deadline }
+        )
+      }
 
       await eventBus.emit({
         type: 'MISSION_CREATED',
@@ -61,6 +73,7 @@ export class MissionService {
           ...(input.tags !== undefined && { tags: input.tags }),
           ...(input.dependencies !== undefined && { dependencies: input.dependencies }),
           ...(input.progress !== undefined && { progress: input.progress }),
+          ...(input.remindAt !== undefined && { remindAt: input.remindAt ? new Date(input.remindAt) : null }),
           ...(input.status === 'completed' && { completedAt: new Date(), progress: 100 }),
         },
         include: { subtasks: true, campaign: true },

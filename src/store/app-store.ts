@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { analyticsService } from '@/services/analytics/analytics-service'
+import { getDashboardStatsAction } from '@/app/actions'
 import { Notification } from '@/core/types/notification'
 import { DEMO_USER_ID } from '@/lib/demo'
 
@@ -58,9 +58,9 @@ export const useAppStore = create<AppState>((set) => ({
   fetchDashboardStats: async (userId: string) => {
     set({ isLoading: true, error: null })
     try {
-      const stats = await analyticsService.getDashboardStats(userId)
+      const stats = await getDashboardStatsAction(userId)
       set({ dashboardStats: stats, isLoading: false })
-    } catch (error) {
+    } catch {
       set({ error: 'Failed to fetch dashboard stats', isLoading: false })
     }
   },

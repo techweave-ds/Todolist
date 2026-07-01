@@ -1,67 +1,61 @@
 import { create } from 'zustand'
 import { calculateLevel } from '@/lib/utils'
-import { XpTransaction } from '@/core/types/reward'
-import { xpService } from '@/services/xp/xp-service'
+import { getLevelInfoAction, getXPHistoryAction } from '@/app/actions'
+
+interface XpTransaction {
+  id: string
+  amount: number
+  reason: string
+  createdAt: string | Date
+}
 
 interface XPState {
-  totalXP: number
   level: number
   currentXP: number
   xpToNextLevel: number
   progress: number
-  recentTransactions: XpTransaction[]
+  totalXP: number
+  xpHistory: XpTransaction[]
   isLoading: boolean
+  error: string | null
   fetchLevelInfo: (userId: string) => Promise<void>
-  fetchTransactions: (userId: string) => Promise<void>
-  updateXP: (totalXP: number) => void
-  setRecentTransactions: (transactions: XpTransaction[]) => void
+  fetchXPHistory: (userId: string) => Promise<void>
 }
 
 export const useXPStore = create<XPState>((set) => ({
-  totalXP: 0,
   level: 1,
   currentXP: 0,
   xpToNextLevel: 100,
   progress: 0,
-  recentTransactions: [],
+  totalXP: 0,
+  xpHistory: [],
   isLoading: false,
+  error: null,
 
   fetchLevelInfo: async (userId: string) => {
-    set({ isLoading: true })
+    set({ isLoading: true, error: null })
     try {
-      const levelInfo = await xpService.getLevelInfo(userId)
+      const info = await getLevelInfoAction(userId) as any
       set({
-        totalXP: levelInfo.totalXP,
-        level: levelInfo.level,
-        currentXP: levelInfo.currentXP,
-        xpToNextLevel: levelInfo.xpToNextLevel,
-        progress: Math.round((levelInfo.currentXP / levelInfo.xpToNextLevel) * 100),
+        level: info.currentLevel,
+        currentXP: info.currentXP,
+        xpToNextLevel: info.xpToNextLevel,
+        progress: info.progress,
+        totalXP: info.totalXP,
         isLoading: false,
       })
     } catch {
-      set({ isLoading: false })
+      set({ error: 'Failed to fetch level info', isLoading: false })
     }
   },
 
-  fetchTransactions: async (userId: string) => {
+  fetchXPHistory: async (userId: string) => {
+    set({ isLoading: true, error: null })
     try {
-      const transactions = await xpService.getXPHistory(userId, 20)
-      set({ recentTransactions: transactions })
+      const history = await getXPHistoryAction(userId) as XpTransaction[]
+      set({ xpHistory: history, isLoading: false })
     } catch {
-      // silent
+      set({ error: 'Failed to fetch XP history', isLoading: false })
     }
   },
-
-  updateXP: (totalXP: number) => {
-    const levelInfo = calculateLevel(totalXP)
-    set({
-      totalXP,
-      level: levelInfo.level,
-      currentXP: levelInfo.currentXP,
-      xpToNextLevel: levelInfo.xpToNextLevel,
-      progress: Math.round((levelInfo.currentXP / levelInfo.xpToNextLevel) * 100),
-    })
-  },
-
-  setRecentTransactions: (transactions) => set({ recentTransactions: transactions }),
 }))

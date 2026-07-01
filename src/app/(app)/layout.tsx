@@ -3,6 +3,7 @@ import { Header } from '@/components/layout/header'
 import { CommandPalette } from '@/components/layout/command-palette'
 import { SessionInitializer } from '@/components/auth/session-initializer'
 import { GlowBackground } from '@/components/ui/glow-background'
+import { NotificationProvider } from '@/components/notifications/notification-provider'
 
 export default function AppLayout({
   children,
@@ -13,6 +14,7 @@ export default function AppLayout({
     <div className="min-h-screen relative">
       <GlowBackground />
       <SessionInitializer />
+      <NotificationProvider />
       <Sidebar />
       <Header />
       <main className="pl-64 pt-16 min-h-screen relative z-10">

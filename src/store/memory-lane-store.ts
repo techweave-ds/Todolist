@@ -1,17 +1,26 @@
 import { create } from 'zustand'
-import { MemoryLaneEntry } from '@/core/types/memory-lane'
-import { memoryLaneService } from '@/services/memory-lane/memory-lane-service'
+import { getMemoryLaneEntriesAction, getMemoryLaneTimelineAction } from '@/app/actions'
+
+interface MemoryLaneEntry {
+  id: string
+  type: string
+  title: string
+  description: string | null
+  data: Record<string, unknown> | null
+  importance: number
+  createdAt: string | Date
+}
 
 interface TimelineGroup {
-  date: string
-  items: MemoryLaneEntry[]
-  significance: number
+  year: number
+  entries: MemoryLaneEntry[]
 }
 
 interface MemoryLaneState {
   entries: MemoryLaneEntry[]
   timeline: TimelineGroup[]
   isLoading: boolean
+  error: string | null
   fetchMemoryLane: (userId: string) => Promise<void>
 }
 
@@ -19,17 +28,18 @@ export const useMemoryLaneStore = create<MemoryLaneState>((set) => ({
   entries: [],
   timeline: [],
   isLoading: false,
+  error: null,
 
   fetchMemoryLane: async (userId: string) => {
-    set({ isLoading: true })
+    set({ isLoading: true, error: null })
     try {
       const [entries, timeline] = await Promise.all([
-        memoryLaneService.getEntries(userId),
-        memoryLaneService.getTimeline(userId),
+        getMemoryLaneEntriesAction(userId) as any,
+        getMemoryLaneTimelineAction(userId) as any,
       ])
-      set({ entries: entries as MemoryLaneEntry[], timeline: timeline as TimelineGroup[], isLoading: false })
+      set({ entries, timeline, isLoading: false })
     } catch {
-      set({ isLoading: false })
+      set({ error: 'Failed to fetch memory lane', isLoading: false })
     }
   },
 }))

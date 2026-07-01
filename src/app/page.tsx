@@ -124,6 +124,24 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* PRODUCT REVEAL */}
+        <section className="py-12 text-center">
+          <div className="glass rounded-2xl overflow-hidden max-w-4xl mx-auto">
+            <video
+              src="/product-reveal.mp4"
+              controls
+              muted
+              autoPlay
+              loop
+              playsInline
+              className="w-full h-auto"
+              poster="/product-reveal-poster.jpg"
+            >
+              Your browser does not support the video tag.
+            </video>
+          </div>
+        </section>
+
         {/* HOW IT WORKS */}
         <section className="py-20">
           <div className="text-center mb-12">

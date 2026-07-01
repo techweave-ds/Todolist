@@ -1,6 +1,12 @@
 import { create } from 'zustand'
 import { MissionCreateInput, MissionUpdateInput } from '@/core/types'
-import { missionService } from '@/services/missions/mission-service'
+import {
+  fetchMissionsAction,
+  createMissionAction,
+  updateMissionAction,
+  completeMissionAction,
+  deleteMissionAction,
+} from '@/app/actions'
 
 interface Mission {
   id: string
@@ -18,6 +24,7 @@ interface Mission {
   tags: string[]
   category: string | null
   completedAt: string | Date | null
+  remindAt: string | Date | null
   createdAt: string | Date
   updatedAt: string | Date
   campaign?: { id: string; title: string } | null
@@ -46,9 +53,9 @@ export const useMissionStore = create<MissionState>((set, get) => ({
   fetchMissions: async (userId: string) => {
     set({ isLoading: true, error: null })
     try {
-      const missions = await missionService.getByUser(userId)
+      const missions = await fetchMissionsAction(userId)
       set({ missions, isLoading: false })
-    } catch (error) {
+    } catch {
       set({ error: 'Failed to fetch missions', isLoading: false })
     }
   },
@@ -56,10 +63,10 @@ export const useMissionStore = create<MissionState>((set, get) => ({
   createMission: async (input: MissionCreateInput, userId: string) => {
     set({ isLoading: true, error: null })
     try {
-      const mission = await missionService.create(input, userId)
+      const mission = await createMissionAction(input, userId)
       set(state => ({ missions: [mission, ...state.missions], isLoading: false }))
       return mission
-    } catch (error) {
+    } catch {
       set({ error: 'Failed to create mission', isLoading: false })
       return null
     }
@@ -68,12 +75,12 @@ export const useMissionStore = create<MissionState>((set, get) => ({
   updateMission: async (id: string, input: MissionUpdateInput, userId: string) => {
     set({ error: null })
     try {
-      const updated = await missionService.update(id, input, userId)
+      const updated = await updateMissionAction(id, input, userId)
       set(state => ({
         missions: state.missions.map(m => m.id === id ? { ...m, ...updated } : m),
         selectedMission: state.selectedMission?.id === id ? updated : state.selectedMission,
       }))
-    } catch (error) {
+    } catch {
       set({ error: 'Failed to update mission' })
     }
   },
@@ -81,13 +88,13 @@ export const useMissionStore = create<MissionState>((set, get) => ({
   completeMission: async (id: string, userId: string) => {
     set({ error: null })
     try {
-      const completed = await missionService.complete(id, userId)
+      const completed = await completeMissionAction(id, userId)
       set(state => ({
         missions: state.missions.map(m => m.id === id ? { ...m, ...completed } : m),
         selectedMission: state.selectedMission?.id === id ? completed : state.selectedMission,
       }))
       return completed as Mission | null
-    } catch (error) {
+    } catch {
       set({ error: 'Failed to complete mission' })
       return null
     }
@@ -96,12 +103,12 @@ export const useMissionStore = create<MissionState>((set, get) => ({
   deleteMission: async (id: string, userId: string) => {
     set({ error: null })
     try {
-      await missionService.delete(id, userId)
+      await deleteMissionAction(id, userId)
       set(state => ({
         missions: state.missions.filter(m => m.id !== id),
         selectedMission: state.selectedMission?.id === id ? null : state.selectedMission,
       }))
-    } catch (error) {
+    } catch {
       set({ error: 'Failed to delete mission' })
     }
   },

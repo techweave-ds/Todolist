@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { useAppStore } from '@/store/app-store'
 import { useMissionStore } from '@/store/mission-store'
@@ -35,6 +36,7 @@ const quickActions = [
 ]
 
 export default function DashboardPage() {
+  const router = useRouter()
   const { dashboardStats, fetchDashboardStats, userId, isLoading: statsLoading } = useAppStore()
   const { missions, fetchMissions } = useMissionStore()
   const { level, currentXP, xpToNextLevel, progress, fetchLevelInfo } = useXPStore()
@@ -167,7 +169,11 @@ export default function DashboardPage() {
             {activeMissions.length > 0 ? (
               <div className="space-y-1">
                 {activeMissions.slice(0, 5).map((mission) => (
-                  <div key={mission.id} className="flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-muted/30 transition-colors group cursor-pointer">
+                  <div
+                    key={mission.id}
+                    onClick={() => router.push('/missions')}
+                    className="flex items-center gap-3 py-2.5 px-3 rounded-lg hover:bg-muted/30 transition-colors group cursor-pointer"
+                  >
                     <div className={`w-2 h-2 rounded-full shrink-0 ${
                       mission.priority === 'critical' ? 'bg-red-500 animate-pulse-glow' :
                       mission.priority === 'high' ? 'bg-orange-500' :

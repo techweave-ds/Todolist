@@ -1,11 +1,11 @@
 'use client'
 
-import { Bell, Search, Command } from 'lucide-react'
+import { Search, Command } from 'lucide-react'
 import { useAppStore } from '@/store/app-store'
-import { DEMO_USER_ID } from '@/lib/demo'
+import { NotificationBell } from '@/components/notifications/notification-bell'
 
 export function Header() {
-  const { unreadCount, toggleCommandPalette, userId, isDemo } = useAppStore()
+  const { toggleCommandPalette, userId, isDemo } = useAppStore()
 
   const avatarInitial = isDemo
     ? 'D'
@@ -39,14 +39,7 @@ export function Header() {
             </kbd>
           </button>
 
-          <button className="relative p-2 rounded-lg hover:bg-muted/50 transition-colors">
-            <Bell className="w-5 h-5" />
-            {unreadCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 w-4 h-4 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center">
-                {unreadCount}
-              </span>
-            )}
-          </button>
+          <NotificationBell />
 
           <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-sm font-bold text-white">
             {avatarInitial}

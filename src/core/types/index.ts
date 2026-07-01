@@ -14,6 +14,8 @@ export interface MissionCreateInput {
   category?: string
   tags?: string[]
   dependencies?: string[]
+  remindBefore?: number
+  remindAt?: string
 }
 
 export interface MissionUpdateInput {
@@ -29,6 +31,7 @@ export interface MissionUpdateInput {
   tags?: string[]
   dependencies?: string[]
   progress?: number
+  remindAt?: string | null
 }
 
 // Campaign Types

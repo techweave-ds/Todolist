@@ -3,6 +3,9 @@
 import { prisma } from '@/lib/prisma'
 import { missionService } from '@/services/missions/mission-service'
 import { campaignService } from '@/services/campaigns/campaign-service'
+import { notificationService } from '@/services/notifications/notification-service'
+import { analyticsService } from '@/services/analytics/analytics-service'
+import { xpService } from '@/services/xp/xp-service'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { DEMO_USER_ID, DEMO_COOKIE } from '@/lib/demo'
 import { cookies } from 'next/headers'
@@ -233,4 +236,241 @@ export async function loginWithEmail(formData: FormData) {
   cookieStore.set('local_user_email', email, { path: '/', maxAge: 60 * 60 * 24 * 30 })
 
   return { success: true, userId: user.id }
+}
+
+export async function toggleSubtask(subtaskId: string, completed: boolean) {
+  const userId = await getAuthUserId()
+  const subtask = await prisma.subtask.findUnique({ where: { id: subtaskId }, include: { mission: true } })
+  if (!subtask || subtask.mission.userId !== userId) throw new Error('Not found')
+  return prisma.subtask.update({ where: { id: subtaskId }, data: { completed: !completed } })
+}
+
+export async function createSubtask(missionId: string, title: string) {
+  const userId = await getAuthUserId()
+  const mission = await prisma.mission.findUnique({ where: { id: missionId } })
+  if (!mission || mission.userId !== userId) throw new Error('Not found')
+  return prisma.subtask.create({ data: { missionId, title } })
+}
+
+export async function getNotifications() {
+  const userId = await getAuthUserId()
+  return notificationService.getAll(userId, 50)
+}
+
+export async function getUnreadCount() {
+  const userId = await getAuthUserId()
+  return notificationService.getUnreadCount(userId)
+}
+
+export async function markNotificationRead(notificationId: string) {
+  const userId = await getAuthUserId()
+  return notificationService.markAsRead(notificationId, userId)
+}
+
+export async function markAllNotificationsRead() {
+  const userId = await getAuthUserId()
+  return notificationService.markAllAsRead(userId)
+}
+
+// --- Mission Actions ---
+export async function fetchMissionsAction(userId: string) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  return missionService.getByUser(userId)
+}
+
+export async function createMissionAction(input: import('@/core/types').MissionCreateInput, userId: string) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  return missionService.create(input, userId)
+}
+
+export async function updateMissionAction(id: string, input: import('@/core/types').MissionUpdateInput, userId: string) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  return missionService.update(id, input, userId)
+}
+
+export async function completeMissionAction(id: string, userId: string) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  return missionService.complete(id, userId)
+}
+
+export async function deleteMissionAction(id: string, userId: string) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  return missionService.delete(id, userId)
+}
+
+// --- Campaign Actions ---
+export async function fetchCampaignsAction(userId: string) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  return campaignService.getByUser(userId)
+}
+
+export async function createCampaignAction(input: import('@/core/types').CampaignCreateInput, userId: string) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  return campaignService.create(input, userId)
+}
+
+export async function updateCampaignAction(id: string, input: import('@/core/types').CampaignUpdateInput, userId: string) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  return campaignService.update(id, input, userId)
+}
+
+export async function deleteCampaignAction(id: string, userId: string) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  return campaignService.delete(id, userId)
+}
+
+// --- Analytics Actions ---
+export async function getDashboardStatsAction(userId: string) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  return analyticsService.getDashboardStats(userId)
+}
+
+export async function getMissionCompletionRateAction(userId: string) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  return analyticsService.getMissionCompletionRate(userId)
+}
+
+export async function getFocusTimeAction(userId: string) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  return analyticsService.getFocusTime(userId)
+}
+
+export async function getCategoryDistributionAction(userId: string) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  return analyticsService.getCategoryDistribution(userId)
+}
+
+// --- XP Actions ---
+export async function getLevelInfoAction(userId: string) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  return xpService.getLevelInfo(userId)
+}
+
+export async function getXPHistoryAction(userId: string) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  return xpService.getXPHistory(userId, 20)
+}
+
+// --- Focus Actions ---
+export async function startFocusSessionAction(input: import('@/core/types').FocusSessionInput, userId: string) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  const { focusService } = await import('@/services/focus/focus-service')
+  return focusService.startSession(input, userId)
+}
+
+export async function endFocusSessionAction(sessionId: string, userId: string, data: { actualDuration: number; completed: boolean; distractions: number }) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  const { focusService } = await import('@/services/focus/focus-service')
+  return focusService.endSession(sessionId, userId, data.actualDuration, data.completed, data.distractions)
+}
+
+export async function getFocusSessionHistoryAction(userId: string) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  const { focusService } = await import('@/services/focus/focus-service')
+  return focusService.getSessionHistory(userId)
+}
+
+export async function getFocusStatisticsAction(userId: string) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  const { focusService } = await import('@/services/focus/focus-service')
+  return focusService.getStatistics(userId)
+}
+
+export async function getFocusWeeklyDataAction(userId: string) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  const { focusService } = await import('@/services/focus/focus-service')
+  return focusService.getWeeklyData(userId)
+}
+
+// --- Achievement Actions ---
+export async function getUserAchievementsAction(userId: string) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  const { achievementService } = await import('@/services/achievements/achievement-service')
+  return achievementService.getUserAchievements(userId)
+}
+
+// --- Memory Lane Actions ---
+export async function getMemoryLaneEntriesAction(userId: string) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  const { memoryLaneService } = await import('@/services/memory-lane/memory-lane-service')
+  return memoryLaneService.getEntries(userId)
+}
+
+export async function getMemoryLaneTimelineAction(userId: string) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  const { memoryLaneService } = await import('@/services/memory-lane/memory-lane-service')
+  return memoryLaneService.getTimeline(userId)
+}
+
+// --- AI Actions ---
+export async function generateDailyBriefingAction(userId: string) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  const { aiService } = await import('@/services/ai/ai-service')
+  return aiService.generateDailyBriefing(userId)
+}
+
+export async function generateWeeklyPlanAction(userId: string) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  const { aiService } = await import('@/services/ai/ai-service')
+  return aiService.generateWeeklyPlan(userId)
+}
+
+export async function breakDownGoalAction(goal: string, userId: string) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  const { aiService } = await import('@/services/ai/ai-service')
+  return aiService.breakDownGoal(goal, userId)
+}
+
+export async function getCoachingAction(question: string, userId: string) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  const { aiService } = await import('@/services/ai/ai-service')
+  return aiService.getCoaching(userId, question)
+}
+
+export async function getMotivationAction(userId: string) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  const { aiService } = await import('@/services/ai/ai-service')
+  return aiService.getMotivation(userId)
+}
+
+export async function getProviderHealthAction() {
+  await getAuthUserId()
+  const { aiService } = await import('@/services/ai/ai-service')
+  return aiService.getProviderHealth()
+}
+
+// --- Workspace Actions ---
+export async function getWorkspaceProgressionAction(userId: string) {
+  const authUserId = await getAuthUserId()
+  if (authUserId !== userId) throw new Error('Unauthorized')
+  const { workspaceService } = await import('@/services/workspace/workspace-service')
+  return workspaceService.getByUserId(userId)
 }

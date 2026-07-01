@@ -1,7 +1,12 @@
 import { create } from 'zustand'
-import { analyticsService } from '@/services/analytics/analytics-service'
+import {
+  getDashboardStatsAction,
+  getMissionCompletionRateAction,
+  getFocusTimeAction,
+  getCategoryDistributionAction,
+} from '@/app/actions'
 
-interface DashboardStats {
+interface Stats {
   level: number
   totalXP: number
   currentXP: number
@@ -20,24 +25,32 @@ interface DashboardStats {
 }
 
 interface CompletionRate {
-  total: number
-  completed: number
   rate: number
+  completed: number
+  total: number
 }
 
 interface FocusData {
   totalMinutes: number
   totalSessions: number
-  averagePerSession: number
   dailyData: Record<string, number>
+  averagePerSession: number
 }
 
+interface CategoryEntry {
+  completed: number
+  total: number
+}
+
+type CategoryData = Record<string, CategoryEntry>
+
 interface AnalyticsState {
-  stats: DashboardStats | null
+  stats: Stats | null
   completionRate: CompletionRate | null
   focusData: FocusData | null
-  categoryData: Record<string, { total: number; completed: number }> | null
+  categoryData: CategoryData
   isLoading: boolean
+  error: string | null
   fetchAnalytics: (userId: string) => Promise<void>
 }
 
@@ -45,21 +58,22 @@ export const useAnalyticsStore = create<AnalyticsState>((set) => ({
   stats: null,
   completionRate: null,
   focusData: null,
-  categoryData: null,
+  categoryData: {},
   isLoading: false,
+  error: null,
 
   fetchAnalytics: async (userId: string) => {
-    set({ isLoading: true })
+    set({ isLoading: true, error: null })
     try {
       const [stats, completionRate, focusData, categoryData] = await Promise.all([
-        analyticsService.getDashboardStats(userId),
-        analyticsService.getMissionCompletionRate(userId),
-        analyticsService.getFocusTime(userId),
-        analyticsService.getCategoryDistribution(userId),
+        getDashboardStatsAction(userId) as Promise<Stats>,
+        getMissionCompletionRateAction(userId) as Promise<CompletionRate>,
+        getFocusTimeAction(userId) as Promise<FocusData>,
+        getCategoryDistributionAction(userId) as Promise<CategoryData>,
       ])
       set({ stats, completionRate, focusData, categoryData, isLoading: false })
     } catch {
-      set({ isLoading: false })
+      set({ error: 'Failed to fetch analytics', isLoading: false })
     }
   },
 }))
