@@ -1,0 +1,1 @@
+ALTER TABLE "Mission" ADD COLUMN "remindAt" TIMESTAMP(3);
