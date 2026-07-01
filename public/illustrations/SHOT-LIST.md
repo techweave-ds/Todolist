@@ -1,131 +1,65 @@
 # Quiet Panda — Xiaohei Style Illustration Shot List
 
-> 把 Quiet Panda / Mission Control OS 的产品概念，变成 6 张小黑怪诞正文配图。
-> 16:9 横版 | 纯白手绘 | 小黑 IP | 少量红橙蓝中文批注
+> 6 illustrations in Xiaohei style: 16:9, pure white background, black hand-drawn line art, absurd-clean metaphors, English annotations.
 
 ---
 
-## Shot 01: 任务变任务书 (Missions become missions)
+## Shot 01: To-Dos → Missions
 
-**放在**：Hero 下方，介绍 Missions 功能处
-**主题**：待办清单 → 任务书
-**结构类型**：Workflow 流程
-**核心意思**：普通 todo 被塞进一台怪机器，出来变成带 XP 的作战任务书。小黑在机器旁边摇把手。
-
-**画面构图**：
-左侧地上散落几张皱巴巴的普通便签纸（「买牛奶」「回邮件」），上面盖着一个大漏斗状的怪机器。小黑站在机器右侧，踮起细腿，双手用力摇一个手摇转盘。机器下方出口吐出一张整整齐齐的「任务书」，上头清楚标注着难度、XP、截止期限。
-橙色箭头从左侧便签指向漏斗入口，再从漏斗出口指向任务书。
-
-**元素**：皱便签 / 漏斗怪机器 / 手摇转盘 / 任务书
-
-**中文标注**：
-- 红色：`待办`
-- 橙色：`变成任务`
-- 蓝色：`难度·XP·截止日`
+**Theme**: Turning sticky-note tasks into structured mission documents
+**Type**: Workflow
+**Core idea**: Ordinary to-dos go into an absurd crank machine, come out as XP-ranked mission briefs. 小黑 cranks the handle.
+**Labels**: Red "To-Dos" / Orange "→ Missions" / Blue "Difficulty · XP · Deadline"
 
 ---
 
-## Shot 02: 小黑的 3D 工位 (小黑's 3D workspace)
+## Shot 02: The Workspace That Grows
 
-**放在**：Living Workspace 功能介绍处
-**主题**：空房间 → 长出来的工位
-**结构类型**：Before / After 前后对比
-**核心意思**：完成越多任务，工位越丰富。小黑原本蹲在空房间里，现在房间里长出了植物、屏幕、奖杯。
-
-**画面构图**：
-画面左右各一半，中间一道细虚线。
-左侧：空荡荡的房间，地板一条线，小黑孤零零蹲在正中间，头顶只有一个灯泡垂下来。红色标注：`Lv.0 空`
-右侧：同一房间，但多了很多东西——桌上放了双屏幕显示器、旁边一盆高过小黑的植物、墙上有三颗星星奖杯排成一排、地板变成浅色格子。小黑坐在桌前，面对屏幕，细腿翘在桌上。蓝色标注：`Lv.12 长出来的`。橙色虚线箭头从左侧地板穿到右侧地板。
-
-**元素**：空房间 / 灯泡 / 双屏幕 / 盆栽 / 星星奖杯 / 小板凳
-
-**中文标注**：
-- 红色：`Lv.0 空`
-- 蓝色：`Lv.12 长出来的`
-- 黑色：`每完成一个任务，工位就长一样东西`
+**Theme**: Empty room → furnished command center as you level up
+**Type**: Before/After
+**Core idea**: Every completed mission adds something to the 3D workspace. Left: bare lightbulb, 小黑 alone on floor. Right: monitors, plant, trophies, 小黑 working.
+**Labels**: Red "Level 0 · Empty" / Blue "Level 12 · Grown"
 
 ---
 
-## Shot 03: AI 教练拆目标 (AI Coach breaks down goals)
+## Shot 03: AI Breaks Down Goals
 
-**放在**：AI Coach 功能介绍处
-**主题**：一个大圆球 → 排成一排的小方块
-**结构类型**：Workflow 流程
-**核心意思**：AI 把模糊的大目标，拆成每周可执行的任务清单。小黑在流水线末端接方块。
-
-**画面构图**：
-画面中央一个高瘦的老式邮筒状机器，顶部开口。一个巨大的圆球（上面歪歪地写着「做一款产品」）正要掉进邮筒口。邮筒侧面有一扇小门，门缝里陆续掉出一排整齐的小方块，每个方块上分别写着「Week 1」「Week 2」「Week 3」。小黑蹲在邮筒右侧，双手捧着一个刚掉出来的方块，头微微歪向一侧，表情认真。几根橙色箭头从顶部指向邮筒，再从门口指向方块序列。
-
-**元素**：大圆球 / 邮筒机器 / 小方块 / Week 标签
-
-**中文标注**：
-- 红色：`大目标→`
-- 橙色箭头：`AI 拆开`
-- 蓝色：`每周计划的方块`
+**Theme**: Big vague goal → weekly executable blocks
+**Type**: Workflow
+**Core idea**: A giant "Build a Product" ball goes into a postbox-like machine, drops out as weekly plan blocks. 小黑 catches one.
+**Labels**: Red "Big Goal →" / Orange "AI Breaks It Down" / Blue "Weekly plan blocks"
 
 ---
 
-## Shot 04: 专注模式——小黑戴头盔 (Focus Mode — 小黑 wears a helmet)
+## Shot 04: Focus Mode — Helmet On
 
-**放在**：Focus Sessions 功能介绍处
-**主题**：被噪音包围 → 进入专注泡泡
-**结构类型**：Character State 角色状态 / Mini Comic 小漫画
-**核心意思**：打开专注模式后，外界被隔开，小黑进入自己的深流状态。
-
-**画面构图**：
-两格漫画，从左到右。
-第一格：小黑蹲在画面中央，周围飘着很多碎纸片，分别写着「通知」「邮件」「消息」「短视频」。小黑两手捂着耳朵，眼睛瞪大（白点变大），表情有点慌乱。红色标注：`被轰炸`
-第二格：小黑戴着一个看起来像焊接面罩的大头盔，头盔把整个头的上半部都罩住了。周围所有纸片都落在了地上，小黑盘腿坐着，面前放着一个沙漏在计时。橙色标注：`Deep Flow`。头盔旁边蓝色标注：`环境音 · 白噪音`
-
-**元素**：碎纸片 / 焊接面罩 / 沙漏 / 两条腿盘坐
-
-**中文标注**：
-- 第一格红色：`被轰炸`
-- 第二格橙色：`Deep Flow`
-- 第二格蓝色：`环境音 · 白噪音`
+**Theme**: Before and after activating focus mode
+**Type**: Mini Comic (2 panels)
+**Core idea**: Left: 小黑 bombarded by notifications. Right: welding helmet on, hourglass ticking, all noise silenced.
+**Labels**: Red "BOMBARDED" / Orange "DEEP FLOW" / Blue "Ambient · White Noise"
 
 ---
 
-## Shot 05: XP 升级——小黑爬梯子 (XP Level Up — 小黑 climbs a ladder)
+## Shot 05: The XP Ladder
 
-**放在**：XP & Leveling 功能介绍处
-**主题**：向上爬的 XP 阶梯
-**结构类型**：Map Route 地图路线 / Conceptual Metaphor 概念隐喻
-**核心意思**：每个任务都是一阶梯子，XP 积累让小黑一级一级往上爬。每级都有奖励。
-
-**画面构图**：
-画面中央一把怪梯子，梯子不是直的，而是略微弯曲向上，延伸到画面上方消失在白色背景里。梯子的每一级横档上写着一个 XP 数字：50、120、350、800、2000。小黑正在梯子中间偏下的位置，手脚并用地往上爬，表情很认真很吃力。梯子侧边每隔几级飘着一个小奖杯图标和一条彩带。梯子最下面几级还躺着几个小黑用完的空饼干袋（表示「消耗了很多任务」）。梯子两侧留白很多。
-
-**元素**：长梯子 / XP 数字横档 / 小奖杯 / 彩带 / 空饼干袋
-
-**中文标注**：
-- 红色（梯子顶部方向）：`下一级：5,000 XP`
-- 橙色（顺着梯子方向）：`每级都有奖励`
-- 蓝色（梯子底部）：`从 0 开始爬`
+**Theme**: Climbing a ladder where each rung is an XP milestone
+**Type**: Conceptual Metaphor
+**Core idea**: 小黑 climbs a curved ladder with XP rungs (50 → 2000). Trophies float beside reward levels. Empty snack wrappers at the bottom.
+**Labels**: Red "Next: 5,000 XP" / Orange "Rewards at every level" / Blue "Start from zero"
 
 ---
 
-## Shot 06: 记忆长廊——小黑回头看 (Memory Lane — 小黑 looks back)
+## Shot 06: Memory Lane
 
-**放在**：Memory Lane 功能介绍处
-**主题**：一条长长的、长满东西的回头路
-**结构类型**：Map Route 地图路线
-**核心意思**：所有里程碑都在身后排成一条路，小黑站在当前时间点回头看自己走过的路。
-
-**画面构图**：
-横向构图，从左到右一条弯曲小路。左侧（过去）的路边依次种着小树苗、立着小旗子、放着小奖杯。每个物件旁边都有小字标注：「完成第一个任务」「连续 30 天打卡」「升到 Lv.10」。路一直延伸到右侧（现在），小黑站在路的最右端，背对观众，面朝来路的方向。小黑肩上扛着一个望远镜，但不是朝前看，而是朝后看。路的尽头消失在左侧白色背景里。
-
-**元素**：弯曲小路 / 树苗 / 旗子 / 奖杯 / 望远镜 / 小黑背影
-
-**中文标注**：
-- 红色（左侧远景）：`起点`
-- 黑色（每个里程碑旁）：`标志性节点记录`
-- 蓝色（小黑旁边）：`回头看，已经走了这么远`
+**Theme**: Looking back at the journey
+**Type**: Map Route
+**Core idea**: A winding path with milestone markers (first mission, 30-day streak, Level 10). 小黑 stands at the end, looking backward through a telescope held backward.
+**Labels**: Red "Start" / Blue "Look how far you have come"
 
 ---
 
-## 使用说明
+## How to Use
 
-1. 用上述提示词直接生成 PNG，16:9 横版
-2. 复制到 `public/illustrations/` 并按顺序命名 `01-missions.png` ~ `06-memory-lane.png`
-3. 每张图使用前按 QA checklist 检查：白底、小黑是核心动作主体、不是旧案例复刻、中文标注少而短
+1. Take any `0X-*.md` file and paste its content into your image generator (Midjourney, DALL-E, Stable Diffusion, etc.)
+2. Save the output PNG to `public/illustrations/` as `0X-name.png`
+3. Run QA check: white bg, 小黑 is core action (not decoration), fresh metaphor, English labels readable
