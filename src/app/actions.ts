@@ -272,58 +272,71 @@ export async function markAllNotificationsRead() {
   return notificationService.markAllAsRead(userId)
 }
 
-// --- Mission Actions ---
-export async function fetchMissionsAction(userId: string) {
-  const authUserId = await getAuthUserId()
-  if (authUserId !== userId) throw new Error('Unauthorized')
-  return missionService.getByUser(userId)
-}
+type ActionResult<T> = { data: T } | { error: string }
 
-export async function createMissionAction(input: import('@/core/types').MissionCreateInput, userId: string) {
+// --- Mission Actions ---
+export async function fetchMissionsAction(userId: string): Promise<ActionResult<any>> {
   try {
     const authUserId = await getAuthUserId()
-    if (authUserId !== userId) throw new Error('Unauthorized')
-    return await missionService.create(input, userId)
+    if (authUserId !== userId) return { error: 'Unauthorized' }
+    const missions = await missionService.getByUser(userId)
+    return { data: missions }
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Unknown error'
+    console.error('[fetchMissionsAction]', message)
+    return { error: message }
+  }
+}
+
+export async function createMissionAction(input: import('@/core/types').MissionCreateInput, userId: string): Promise<ActionResult<any>> {
+  try {
+    const authUserId = await getAuthUserId()
+    if (authUserId !== userId) return { error: 'Unauthorized' }
+    const mission = await missionService.create(input, userId)
+    return { data: mission }
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error'
     console.error('[createMissionAction]', message)
-    throw new Error(message)
+    return { error: message }
   }
 }
 
-export async function updateMissionAction(id: string, input: import('@/core/types').MissionUpdateInput, userId: string) {
+export async function updateMissionAction(id: string, input: import('@/core/types').MissionUpdateInput, userId: string): Promise<ActionResult<any>> {
   try {
     const authUserId = await getAuthUserId()
-    if (authUserId !== userId) throw new Error('Unauthorized')
-    return await missionService.update(id, input, userId)
+    if (authUserId !== userId) return { error: 'Unauthorized' }
+    const mission = await missionService.update(id, input, userId)
+    return { data: mission }
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error'
     console.error('[updateMissionAction]', message)
-    throw new Error(message)
+    return { error: message }
   }
 }
 
-export async function completeMissionAction(id: string, userId: string) {
+export async function completeMissionAction(id: string, userId: string): Promise<ActionResult<any>> {
   try {
     const authUserId = await getAuthUserId()
-    if (authUserId !== userId) throw new Error('Unauthorized')
-    return await missionService.complete(id, userId)
+    if (authUserId !== userId) return { error: 'Unauthorized' }
+    const mission = await missionService.complete(id, userId)
+    return { data: mission }
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error'
     console.error('[completeMissionAction]', message)
-    throw new Error(message)
+    return { error: message }
   }
 }
 
-export async function deleteMissionAction(id: string, userId: string) {
+export async function deleteMissionAction(id: string, userId: string): Promise<ActionResult<any>> {
   try {
     const authUserId = await getAuthUserId()
-    if (authUserId !== userId) throw new Error('Unauthorized')
-    return await missionService.delete(id, userId)
+    if (authUserId !== userId) return { error: 'Unauthorized' }
+    await missionService.delete(id, userId)
+    return { data: null }
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error'
     console.error('[deleteMissionAction]', message)
-    throw new Error(message)
+    return { error: message }
   }
 }
 

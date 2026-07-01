@@ -52,66 +52,63 @@ export const useMissionStore = create<MissionState>((set, get) => ({
 
   fetchMissions: async (userId: string) => {
     set({ isLoading: true, error: null })
-    try {
-      const missions = await fetchMissionsAction(userId)
-      set({ missions, isLoading: false })
-    } catch {
-      set({ error: 'Failed to fetch missions', isLoading: false })
+    const result = await fetchMissionsAction(userId)
+    if ('error' in result) {
+      set({ error: `Failed to fetch missions: ${result.error}`, isLoading: false })
+      return
     }
+    set({ missions: result.data, isLoading: false })
   },
 
   createMission: async (input: MissionCreateInput, userId: string) => {
     set({ error: null })
-    try {
-      const mission = await createMissionAction(input, userId)
-      set(state => ({ missions: [mission, ...state.missions] }))
-      return mission
-    } catch (e: any) {
-      const msg = e?.message || 'Unknown error'
-      set({ error: `Failed to create mission: ${msg}` })
+    const result = await createMissionAction(input, userId)
+    if ('error' in result) {
+      set({ error: `Failed to create mission: ${result.error}` })
       return null
     }
+    set(state => ({ missions: [result.data, ...state.missions] }))
+    return result.data
   },
 
   updateMission: async (id: string, input: MissionUpdateInput, userId: string) => {
     set({ error: null })
-    try {
-      const updated = await updateMissionAction(id, input, userId)
-      set(state => ({
-        missions: state.missions.map(m => m.id === id ? { ...m, ...updated } : m),
-        selectedMission: state.selectedMission?.id === id ? updated : state.selectedMission,
-      }))
-    } catch {
-      set({ error: 'Failed to update mission' })
+    const result = await updateMissionAction(id, input, userId)
+    if ('error' in result) {
+      set({ error: `Failed to update mission: ${result.error}` })
+      return
     }
+    set(state => ({
+      missions: state.missions.map(m => m.id === id ? { ...m, ...result.data } : m),
+      selectedMission: state.selectedMission?.id === id ? result.data : state.selectedMission,
+    }))
   },
 
   completeMission: async (id: string, userId: string) => {
     set({ error: null })
-    try {
-      const completed = await completeMissionAction(id, userId)
-      set(state => ({
-        missions: state.missions.map(m => m.id === id ? { ...m, ...completed } : m),
-        selectedMission: state.selectedMission?.id === id ? completed : state.selectedMission,
-      }))
-      return completed as Mission | null
-    } catch {
-      set({ error: 'Failed to complete mission' })
+    const result = await completeMissionAction(id, userId)
+    if ('error' in result) {
+      set({ error: `Failed to complete mission: ${result.error}` })
       return null
     }
+    set(state => ({
+      missions: state.missions.map(m => m.id === id ? { ...m, ...result.data } : m),
+      selectedMission: state.selectedMission?.id === id ? result.data : state.selectedMission,
+    }))
+    return result.data as Mission | null
   },
 
   deleteMission: async (id: string, userId: string) => {
     set({ error: null })
-    try {
-      await deleteMissionAction(id, userId)
-      set(state => ({
-        missions: state.missions.filter(m => m.id !== id),
-        selectedMission: state.selectedMission?.id === id ? null : state.selectedMission,
-      }))
-    } catch {
-      set({ error: 'Failed to delete mission' })
+    const result = await deleteMissionAction(id, userId)
+    if ('error' in result) {
+      set({ error: `Failed to delete mission: ${result.error}` })
+      return
     }
+    set(state => ({
+      missions: state.missions.filter(m => m.id !== id),
+      selectedMission: state.selectedMission?.id === id ? null : state.selectedMission,
+    }))
   },
 
   setSelectedMission: (mission) => set({ selectedMission: mission }),
