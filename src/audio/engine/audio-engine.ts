@@ -65,6 +65,15 @@ class AudioEngineImpl {
     }
   }
 
+  getAnalyser(): AnalyserNode | null {
+    if (!this.ctx) return null;
+    const analyser = this.ctx.createAnalyser();
+    analyser.fftSize = 256;
+    const master = this.buses.get('master');
+    if (master) master.gain.connect(analyser);
+    return analyser;
+  }
+
   private getBus(type: BusType): GainNode | null {
     return this.buses.get(type)?.gain ?? null;
   }
