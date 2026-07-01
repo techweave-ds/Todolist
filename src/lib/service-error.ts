@@ -13,7 +13,7 @@ export function handleServiceError(error: unknown, context: string): never {
   if (error instanceof ServiceError) throw error
   const message = error instanceof Error ? error.message : 'Unknown error'
   console.error(`[${context}] ${message}`, error)
-  throw new ServiceError(`Service error: ${context}`, 'SERVICE_ERROR', 500)
+  throw new ServiceError(`Service error: ${context} — ${message}`, 'SERVICE_ERROR', 500)
 }
 
 export function prismaErrorHandler(error: unknown, context: string): void {
@@ -29,8 +29,9 @@ export function createServiceMethod<Args extends unknown[], T>(
     try {
       return await fn(...args)
     } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error'
       prismaErrorHandler(error, context)
-      throw new ServiceError(`Service error: ${context}`, 'SERVICE_ERROR', 500)
+      throw new ServiceError(`Service error: ${context} — ${message}`, 'SERVICE_ERROR', 500)
     }
   }
 }
