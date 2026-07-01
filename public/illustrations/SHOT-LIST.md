@@ -8,7 +8,7 @@
 
 **Theme**: Turning sticky-note tasks into structured mission documents
 **Type**: Workflow
-**Core idea**: Ordinary to-dos go into an absurd crank machine, come out as XP-ranked mission briefs. 小黑 cranks the handle.
+**Core idea**: Ordinary to-dos go into an absurd crank machine, come out as XP-ranked mission briefs. Xiaohei cranks the handle.
 **Labels**: Red "To-Dos" / Orange "→ Missions" / Blue "Difficulty · XP · Deadline"
 
 ---
@@ -17,7 +17,7 @@
 
 **Theme**: Empty room → furnished command center as you level up
 **Type**: Before/After
-**Core idea**: Every completed mission adds something to the 3D workspace. Left: bare lightbulb, 小黑 alone on floor. Right: monitors, plant, trophies, 小黑 working.
+**Core idea**: Every completed mission adds something to the 3D workspace. Left: bare lightbulb, Xiaohei alone on floor. Right: monitors, plant, trophies, Xiaohei working.
 **Labels**: Red "Level 0 · Empty" / Blue "Level 12 · Grown"
 
 ---
@@ -26,7 +26,7 @@
 
 **Theme**: Big vague goal → weekly executable blocks
 **Type**: Workflow
-**Core idea**: A giant "Build a Product" ball goes into a postbox-like machine, drops out as weekly plan blocks. 小黑 catches one.
+**Core idea**: A giant "Build a Product" ball goes into a postbox-like machine, drops out as weekly plan blocks. Xiaohei catches one.
 **Labels**: Red "Big Goal →" / Orange "AI Breaks It Down" / Blue "Weekly plan blocks"
 
 ---
@@ -35,7 +35,7 @@
 
 **Theme**: Before and after activating focus mode
 **Type**: Mini Comic (2 panels)
-**Core idea**: Left: 小黑 bombarded by notifications. Right: welding helmet on, hourglass ticking, all noise silenced.
+**Core idea**: Left: Xiaohei bombarded by notifications. Right: welding helmet on, hourglass ticking, all noise silenced.
 **Labels**: Red "BOMBARDED" / Orange "DEEP FLOW" / Blue "Ambient · White Noise"
 
 ---
@@ -44,7 +44,7 @@
 
 **Theme**: Climbing a ladder where each rung is an XP milestone
 **Type**: Conceptual Metaphor
-**Core idea**: 小黑 climbs a curved ladder with XP rungs (50 → 2000). Trophies float beside reward levels. Empty snack wrappers at the bottom.
+**Core idea**: Xiaohei climbs a curved ladder with XP rungs (50 → 2000). Trophies float beside reward levels. Empty snack wrappers at the bottom.
 **Labels**: Red "Next: 5,000 XP" / Orange "Rewards at every level" / Blue "Start from zero"
 
 ---
@@ -53,7 +53,7 @@
 
 **Theme**: Looking back at the journey
 **Type**: Map Route
-**Core idea**: A winding path with milestone markers (first mission, 30-day streak, Level 10). 小黑 stands at the end, looking backward through a telescope held backward.
+**Core idea**: A winding path with milestone markers (first mission, 30-day streak, Level 10). Xiaohei stands at the end, looking backward through a telescope held backward.
 **Labels**: Red "Start" / Blue "Look how far you have come"
 
 ---
@@ -62,4 +62,4 @@
 
 1. Take any `0X-*.md` file and paste its content into your image generator (Midjourney, DALL-E, Stable Diffusion, etc.)
 2. Save the output PNG to `public/illustrations/` as `0X-name.png`
-3. Run QA check: white bg, 小黑 is core action (not decoration), fresh metaphor, English labels readable
+3. Run QA check: white bg, Xiaohei is core action (not decoration), fresh metaphor, English labels readable
