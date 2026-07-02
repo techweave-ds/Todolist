@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useMissionStore } from '@/store/mission-store'
 import { useCampaignStore } from '@/store/campaign-store'
 import { useAppStore } from '@/store/app-store'
-import { Plus, MoreHorizontal, Calendar, Clock, Sparkles, Target, SortAsc, Tag, Folder, ListChecks } from 'lucide-react'
+import { Plus, MoreHorizontal, Calendar, Clock, Sparkles, Target, SortAsc, Tag, Folder, ListChecks, RotateCcw, Edit3, Trash2 } from 'lucide-react'
 import { formatRelativeDate } from '@/lib/utils'
 import { GoalBreakdown } from '@/components/ai/goal-breakdown'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -37,7 +37,7 @@ const reminderOptions = [
 type SortKey = 'deadline' | 'priority' | 'createdAt'
 
 export default function MissionsPage() {
-  const { missions, isLoading, error, fetchMissions, createMission, completeMission, deleteMission, updateMission } = useMissionStore()
+  const { missions, isLoading, error, fetchMissions, createMission, completeMission, reopenMission, deleteMission, updateMission } = useMissionStore()
   const { campaigns, fetchCampaigns } = useCampaignStore()
   const { userId } = useAppStore()
   const [showCreate, setShowCreate] = useState(false)
@@ -59,12 +59,17 @@ export default function MissionsPage() {
   const [creating, setCreating] = useState(false)
   const [completingId, setCompletingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [menuOpenId, setMenuOpenId] = useState<string | null>(null)
   const [refreshKey, setRefreshKey] = useState(0)
 
   const triggerRefresh = useCallback(() => setRefreshKey(k => k + 1), [])
 
   const handleComplete = useCallback(async (mission: any) => {
-    if (!userId || mission.status === 'completed' || completingId) return
+    if (!userId || completingId) return
+    if (mission.status === 'completed') {
+      await reopenMission(mission.id, userId)
+      return
+    }
     setCompletingId(mission.id)
     const result = await completeMission(mission.id, userId)
     setCompletingId(null)
@@ -72,7 +77,7 @@ export default function MissionsPage() {
       setCompletedXP({ missionId: mission.id, amount: result.xpReward })
       setTimeout(() => setCompletedXP(null), 2000)
     }
-  }, [userId, completeMission, completingId])
+  }, [userId, completeMission, reopenMission, completingId])
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
@@ -398,14 +403,15 @@ export default function MissionsPage() {
               <div className="flex items-start gap-3">
                 <button
                   onClick={() => handleComplete(mission)}
-                  disabled={mission.status === 'completed' || completingId === mission.id}
+                  disabled={completingId === mission.id}
                   className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors shrink-0 ${
                     mission.status === 'completed'
-                      ? 'border-primary bg-primary text-primary-foreground'
+                      ? 'border-primary bg-primary text-primary-foreground cursor-pointer'
                       : completingId === mission.id
                         ? 'border-muted-foreground animate-pulse'
                         : 'border-muted-foreground hover:border-primary'
                   }`}
+                  title={mission.status === 'completed' ? 'Reopen mission' : 'Complete mission'}
                 >
                   {mission.status === 'completed' && <span className="text-[10px]">✓</span>}
                   {completingId === mission.id && <div className="w-2 h-2 rounded-full bg-primary animate-ping" />}
@@ -462,18 +468,64 @@ export default function MissionsPage() {
                     onUpdate={() => userId && fetchMissions(userId)}
                   />
                 </div>
-                <button
-                  onClick={async () => {
-                    if (!userId || deletingId) return
-                    setDeletingId(mission.id)
-                    await deleteMission(mission.id, userId)
-                    setDeletingId(null)
-                  }}
-                  disabled={deletingId === mission.id}
-                  className="p-1 rounded hover:bg-muted/50 transition-colors disabled:opacity-40"
-                >
-                  <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
-                </button>
+                <div className="relative">
+                  <button
+                    onClick={() => setMenuOpenId(menuOpenId === mission.id ? null : mission.id)}
+                    className="p-1 rounded hover:bg-muted/50 transition-colors"
+                  >
+                    <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                  {menuOpenId === mission.id && (
+                    <>
+                      <div className="fixed inset-0 z-10" onClick={() => setMenuOpenId(null)} />
+                      <div className="absolute right-0 top-full mt-1 z-20 w-40 rounded-lg border border-white/[0.06] bg-background backdrop-blur-xl shadow-xl overflow-hidden">
+                        {mission.status === 'completed' ? (
+                          <button
+                            onClick={async () => {
+                              setMenuOpenId(null)
+                              await reopenMission(mission.id, userId!)
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-white/[0.06] transition-colors text-left"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            Reopen
+                          </button>
+                        ) : (
+                          <button
+                            onClick={async () => {
+                              setMenuOpenId(null)
+                              await completeMission(mission.id, userId!)
+                            }}
+                            className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-white/[0.06] transition-colors text-left"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5" />
+                            Complete
+                          </button>
+                        )}
+                        <button
+                          className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-white/[0.06] transition-colors text-left"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                          Edit
+                        </button>
+                        <button
+                          onClick={async () => {
+                            setMenuOpenId(null)
+                            if (!userId || deletingId) return
+                            setDeletingId(mission.id)
+                            await deleteMission(mission.id, userId)
+                            setDeletingId(null)
+                          }}
+                          disabled={deletingId === mission.id}
+                          className="w-full flex items-center gap-2 px-3 py-2 text-xs hover:bg-red-500/10 hover:text-red-400 transition-colors text-left disabled:opacity-40"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          Delete
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
             </div>
           ))

@@ -5,6 +5,7 @@ import {
   createMissionAction,
   updateMissionAction,
   completeMissionAction,
+  reopenMissionAction,
   deleteMissionAction,
 } from '@/app/actions'
 import { eventBus } from '@/core/events'
@@ -41,6 +42,7 @@ interface MissionState {
   createMission: (input: MissionCreateInput, userId: string) => Promise<Mission | null>
   updateMission: (id: string, input: MissionUpdateInput, userId: string) => Promise<void>
   completeMission: (id: string, userId: string) => Promise<Mission | null>
+  reopenMission: (id: string, userId: string) => Promise<void>
   deleteMission: (id: string, userId: string) => Promise<void>
   setSelectedMission: (mission: Mission | null) => void
 }
@@ -97,7 +99,22 @@ export const useMissionStore = create<MissionState>((set, get) => ({
       selectedMission: state.selectedMission?.id === id ? result.data : state.selectedMission,
     }))
     eventBus.emit({ type: 'MISSION_COMPLETED', payload: { missionId: id, userId } })
+    eventBus.emit({ type: 'XP_GAINED', payload: { userId, amount: (result.data as any)?.xpReward || 0, totalXP: 0, level: 0 } })
+    eventBus.emit({ type: 'REWARD_CAPSULE_OPENED', payload: { userId } })
     return result.data as Mission | null
+  },
+
+  reopenMission: async (id: string, userId: string) => {
+    set({ error: null })
+    const result = await reopenMissionAction(id, userId)
+    if ('error' in result) {
+      set({ error: `Failed to reopen mission: ${result.error}` })
+      return
+    }
+    set(state => ({
+      missions: state.missions.map(m => m.id === id ? { ...m, ...result.data } : m),
+      selectedMission: state.selectedMission?.id === id ? result.data : state.selectedMission,
+    }))
   },
 
   deleteMission: async (id: string, userId: string) => {

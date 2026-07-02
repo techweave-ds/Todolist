@@ -315,6 +315,19 @@ export async function updateMissionAction(id: string, input: import('@/core/type
   }
 }
 
+export async function reopenMissionAction(id: string, userId: string): Promise<ActionResult<any>> {
+  try {
+    const authUserId = await getAuthUserId()
+    if (authUserId !== userId) return { error: 'Unauthorized' }
+    const mission = await missionService.reopen(id, userId)
+    return { data: mission }
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Unknown error'
+    console.error('[reopenMissionAction]', message)
+    return { error: message }
+  }
+}
+
 export async function completeMissionAction(id: string, userId: string): Promise<ActionResult<any>> {
   try {
     const authUserId = await getAuthUserId()

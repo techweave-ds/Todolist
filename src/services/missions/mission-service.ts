@@ -127,6 +127,10 @@ export class MissionService {
     return this.update(id, { status: 'completed', progress: 100 }, userId)
   }
 
+  async reopen(id: string, userId: string) {
+    return this.update(id, { status: 'pending', progress: 0 }, userId)
+  }
+
   async getById(id: string, userId: string) {
     try {
       return await prisma.mission.findFirst({
