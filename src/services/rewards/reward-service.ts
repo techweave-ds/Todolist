@@ -3,6 +3,8 @@ import { eventBus } from '@/core/events'
 import { xpService } from '@/services/xp/xp-service'
 import { achievementService } from '@/services/achievements/achievement-service'
 import { streakService } from '@/services/streaks/streak-service'
+import { notificationService } from '@/services/notifications/notification-service'
+import { memoryLaneService } from '@/services/memory-lane/memory-lane-service'
 import { calculateTotalXP } from '@/services/xp/xp-service'
 import { MissionDifficulty } from '@/core/types'
 import { handleServiceError } from '@/lib/service-error'
@@ -16,6 +18,14 @@ export class RewardService {
       const achievementResult = await achievementService.checkAndUnlock(userId)
 
       const leveledUp = xpResult.levelInfo.level > xpResult.previousLevel
+      if (leveledUp) {
+        await notificationService.create(userId, 'system', `Level ${xpResult.levelInfo.level} Reached!`, `You advanced to level ${xpResult.levelInfo.level}`)
+        await memoryLaneService.addEntry(userId, 'milestone', `Level ${xpResult.levelInfo.level} Reached!`, `Advanced to level ${xpResult.levelInfo.level}`, { level: xpResult.levelInfo.level }, 8)
+      }
+      if (achievementResult) {
+        await notificationService.create(userId, 'achievement', 'Achievement Unlocked!', `Unlocked: ${achievementResult.title}`, { key: achievementResult.key })
+        await memoryLaneService.addEntry(userId, 'achievement', `Achievement: ${achievementResult.title}`, 'Unlocked a new achievement', { key: achievementResult.key }, 8)
+      }
 
       await prisma.userProgress.update({
         where: { userId },

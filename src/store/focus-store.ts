@@ -40,7 +40,6 @@ interface FocusWeeklyEntry {
 interface FocusState {
   currentSession: FocusSession | null
   sessions: FocusSession[]
-  sessionHistory: FocusSession[]
   statistics: FocusStatistics | null
   weeklyData: FocusWeeklyEntry[]
   isActive: boolean
@@ -50,7 +49,6 @@ interface FocusState {
   startSession: (input: FocusSessionInput, userId: string) => Promise<void>
   endSession: (sessionId: string, userId: string, actualDuration: number, completed: boolean, distractions: number) => Promise<void>
   fetchHistory: (userId: string) => Promise<void>
-  fetchSessionHistory: (userId: string) => Promise<void>
   fetchStats: (userId: string) => Promise<void>
   fetchWeeklyData: (userId: string) => Promise<void>
   setTimeRemaining: (t: number) => void
@@ -59,7 +57,6 @@ interface FocusState {
 export const useFocusStore = create<FocusState>((set) => ({
   currentSession: null,
   sessions: [],
-  sessionHistory: [],
   statistics: null,
   weeklyData: [],
   isActive: false,
@@ -93,17 +90,7 @@ export const useFocusStore = create<FocusState>((set) => ({
     set({ isLoading: true, error: null })
     try {
       const history = await getFocusSessionHistoryAction(userId) as FocusSession[]
-      set({ sessions: history, sessionHistory: history, isLoading: false })
-    } catch {
-      set({ error: 'Failed to fetch session history', isLoading: false })
-    }
-  },
-
-  fetchSessionHistory: async (userId: string) => {
-    set({ isLoading: true, error: null })
-    try {
-      const history = await getFocusSessionHistoryAction(userId) as FocusSession[]
-      set({ sessionHistory: history, isLoading: false })
+      set({ sessions: history, isLoading: false })
     } catch {
       set({ error: 'Failed to fetch session history', isLoading: false })
     }

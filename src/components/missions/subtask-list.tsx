@@ -21,7 +21,7 @@ export function SubtaskList({ missionId, subtasks = [], onUpdate }: SubtaskListP
 
   async function handleToggle(id: string, completed: boolean) {
     try {
-      await toggleSubtask(id, completed)
+      await toggleSubtask(id)
       onUpdate()
     } catch {}
   }

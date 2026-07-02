@@ -7,6 +7,7 @@ import { notificationService } from '@/services/notifications/notification-servi
 import { analyticsService } from '@/services/analytics/analytics-service'
 import { rewardService } from '@/services/rewards/reward-service'
 import { xpService } from '@/services/xp/xp-service'
+import { XP } from '@/core/constants'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { DEMO_USER_ID, DEMO_COOKIE } from '@/lib/demo'
 import { cookies } from 'next/headers'
@@ -27,41 +28,6 @@ async function getAuthUserId(): Promise<string> {
   const { data: { user }, error } = await supabase.auth.getUser()
   if (error || !user) throw new Error('Unauthorized')
   return user.id
-}
-
-export async function createMission(formData: FormData) {
-  const userId = await getAuthUserId()
-  const title = formData.get('title') as string
-  const description = formData.get('description') as string
-  const difficulty = formData.get('difficulty') as string
-  const priority = formData.get('priority') as string
-  const deadline = formData.get('deadline') as string
-  const estimatedTime = formData.get('estimatedTime') as string
-
-  return missionService.create({
-    title,
-    description: description || undefined,
-    difficulty: (difficulty ?? 'medium') as any,
-    priority: (priority ?? 'medium') as any,
-    deadline: deadline || undefined,
-    estimatedTime: estimatedTime ? parseInt(estimatedTime) : undefined,
-  }, userId)
-}
-
-export async function completeMission(missionId: string) {
-  const userId = await getAuthUserId()
-  return missionService.complete(missionId, userId)
-}
-
-export async function deleteMission(missionId: string) {
-  const userId = await getAuthUserId()
-  return missionService.delete(missionId, userId)
-}
-
-export async function createCampaign(formData: FormData) {
-  const userId = await getAuthUserId()
-  const title = formData.get('title') as string
-  return campaignService.create({ title }, userId)
 }
 
 export async function getDashboardData() {
@@ -183,7 +149,12 @@ export async function endDemo() {
 }
 
 function generateId() {
-  return 'user_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10)
+  return crypto.randomUUID()
+}
+
+function hashPassword(password: string): string {
+  const { createHash } = require('crypto')
+  return createHash('sha256').update(password).digest('hex')
 }
 
 export async function registerUser(formData: FormData) {
@@ -206,10 +177,11 @@ export async function registerUser(formData: FormData) {
     return { error: 'An account with this email already exists' }
   }
 
-  const userId = generateId()
+  const { randomUUID } = await import('crypto')
+  const userId = randomUUID()
 
   await prisma.user.create({
-    data: { id: userId, email },
+    data: { id: userId, email, passwordHash: hashPassword(password) },
   })
 
   await ensureUserProfile(userId, displayName || email.split('@')[0])
@@ -224,26 +196,34 @@ export async function loginWithEmail(formData: FormData) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
 
-  if (!email) return { error: 'Email is required' }
+  if (!email || !password) return { error: 'Email and password are required' }
 
-  const cookieStore = await cookies()
   const user = await prisma.user.findUnique({ where: { email } })
 
   if (!user) {
     return { error: 'No account found with this email. Try demo mode or create an account.' }
   }
 
+  if (user.passwordHash && user.passwordHash !== hashPassword(password)) {
+    return { error: 'Invalid password' }
+  }
+
+  if (!user.passwordHash) {
+    return { error: 'No password set for this account. Please register again.' }
+  }
+
+  const cookieStore = await cookies()
   cookieStore.set('local_user_id', user.id, { path: '/', maxAge: 60 * 60 * 24 * 30 })
   cookieStore.set('local_user_email', email, { path: '/', maxAge: 60 * 60 * 24 * 30 })
 
   return { success: true, userId: user.id }
 }
 
-export async function toggleSubtask(subtaskId: string, completed: boolean) {
+export async function toggleSubtask(subtaskId: string) {
   const userId = await getAuthUserId()
   const subtask = await prisma.subtask.findUnique({ where: { id: subtaskId }, include: { mission: true } })
   if (!subtask || subtask.mission.userId !== userId) throw new Error('Not found')
-  return prisma.subtask.update({ where: { id: subtaskId }, data: { completed: !completed } })
+  return prisma.subtask.update({ where: { id: subtaskId }, data: { completed: !subtask.completed } })
 }
 
 export async function createSubtask(missionId: string, title: string) {
@@ -438,7 +418,17 @@ export async function endFocusSessionAction(sessionId: string, userId: string, d
   const authUserId = await getAuthUserId()
   if (authUserId !== userId) throw new Error('Unauthorized')
   const { focusService } = await import('@/services/focus/focus-service')
-  return focusService.endSession(sessionId, userId, data.actualDuration, data.completed, data.distractions)
+  const session = await focusService.endSession(sessionId, userId, data.actualDuration, data.completed, data.distractions)
+  if (data.completed && data.actualDuration >= 5) {
+    try {
+      const focusXP = Math.round(data.actualDuration * 0.5)
+      const total = focusXP + Math.round(focusXP * XP.FOCUS_BONUS)
+      await xpService.awardXP(userId, total, 'focus_bonus', sessionId)
+    } catch (e) {
+      console.error('[endFocusSessionAction] XP award failed (non-fatal):', e)
+    }
+  }
+  return session
 }
 
 export async function getFocusSessionHistoryAction(userId: string) {

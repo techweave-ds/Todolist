@@ -3,8 +3,7 @@
 import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { audioEngine } from '@/audio/engine/audio-engine'
-import { registerAllSubscribers } from '@/core/events/subscribers'
+import { audioEngine, setupAudioEventSubscriptions } from '@/audio/engine/audio-engine'
 import { Sidebar } from '@/components/layout/sidebar'
 import { Header } from '@/components/layout/header'
 import { CommandPalette } from '@/components/layout/command-palette'
@@ -21,7 +20,7 @@ export default function AppLayout({
 
   useEffect(() => {
     audioEngine.init()
-    registerAllSubscribers()
+    setupAudioEventSubscriptions()
 
     const resume = () => audioEngine.resumeContext()
     document.addEventListener('click', resume, { once: true })
