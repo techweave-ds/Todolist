@@ -38,3 +38,6 @@ next-env.d.ts
 prisma/*.generated.ts
 
 .vercel
+
+# generated illustration media
+public/*.mp4
