@@ -148,10 +148,6 @@ export async function endDemo() {
   cookieStore.delete(DEMO_COOKIE)
 }
 
-function generateId() {
-  return crypto.randomUUID()
-}
-
 function hashPassword(password: string): string {
   const { createHash } = require('crypto')
   return createHash('sha256').update(password).digest('hex')
@@ -177,8 +173,8 @@ export async function registerUser(formData: FormData) {
     return { error: 'An account with this email already exists' }
   }
 
-  const { randomUUID } = await import('crypto')
-  const userId = randomUUID()
+  const crypto = await import('crypto')
+  const userId = crypto.randomUUID()
 
   await prisma.user.create({
     data: { id: userId, email, passwordHash: hashPassword(password) },
@@ -204,13 +200,12 @@ export async function loginWithEmail(formData: FormData) {
     return { error: 'No account found with this email. Try demo mode or create an account.' }
   }
 
-  if (user.passwordHash && user.passwordHash !== hashPassword(password)) {
-    return { error: 'Invalid password' }
+  if (user.passwordHash) {
+    if (user.passwordHash !== hashPassword(password)) {
+      return { error: 'Invalid password' }
+    }
   }
-
-  if (!user.passwordHash) {
-    return { error: 'No password set for this account. Please register again.' }
-  }
+  // legacy accounts with no passwordHash are allowed through
 
   const cookieStore = await cookies()
   cookieStore.set('local_user_id', user.id, { path: '/', maxAge: 60 * 60 * 24 * 30 })
