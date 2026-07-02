@@ -10,6 +10,7 @@ import { xpService } from '@/services/xp/xp-service'
 import { XP } from '@/core/constants'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { DEMO_USER_ID, DEMO_COOKIE } from '@/lib/demo'
+import crypto from 'crypto'
 import { cookies } from 'next/headers'
 
 async function getAuthUserId(): Promise<string> {
@@ -149,69 +150,78 @@ export async function endDemo() {
 }
 
 function hashPassword(password: string): string {
-  const { createHash } = require('crypto')
-  return createHash('sha256').update(password).digest('hex')
+  return crypto.createHash('sha256').update(password).digest('hex')
 }
 
 export async function registerUser(formData: FormData) {
-  const email = formData.get('email') as string
-  const password = formData.get('password') as string
-  const displayName = formData.get('name') as string
+  try {
+    const email = formData.get('email') as string
+    const password = formData.get('password') as string
+    const displayName = formData.get('name') as string
 
-  if (!email || !password) {
-    return { error: 'Email and password are required' }
+    if (!email || !password) {
+      return { error: 'Email and password are required' }
+    }
+
+    if (password.length < 6) {
+      return { error: 'Password must be at least 6 characters' }
+    }
+
+    const existing = await prisma.user.findUnique({ where: { email } })
+    if (existing) {
+      return { error: 'An account with this email already exists' }
+    }
+
+    const userId = crypto.randomUUID()
+
+    await prisma.user.create({
+      data: { id: userId, email, passwordHash: hashPassword(password) },
+    })
+
+    await ensureUserProfile(userId, displayName || email.split('@')[0])
+
+    const cookieStore = await cookies()
+    cookieStore.set('local_user_id', userId, { path: '/', maxAge: 60 * 60 * 24 * 30 })
+    cookieStore.set('local_user_email', email, { path: '/', maxAge: 60 * 60 * 24 * 30 })
+
+    return { success: true, userId }
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Unknown error'
+    console.error('[registerUser]', message)
+    return { error: 'Failed to create account. Please try again.' }
   }
-
-  if (password.length < 6) {
-    return { error: 'Password must be at least 6 characters' }
-  }
-
-  const cookieStore = await cookies()
-
-  const existing = await prisma.user.findUnique({ where: { email } })
-  if (existing) {
-    return { error: 'An account with this email already exists' }
-  }
-
-  const crypto = await import('crypto')
-  const userId = crypto.randomUUID()
-
-  await prisma.user.create({
-    data: { id: userId, email, passwordHash: hashPassword(password) },
-  })
-
-  await ensureUserProfile(userId, displayName || email.split('@')[0])
-
-  cookieStore.set('local_user_id', userId, { path: '/', maxAge: 60 * 60 * 24 * 30 })
-  cookieStore.set('local_user_email', email, { path: '/', maxAge: 60 * 60 * 24 * 30 })
-
-  return { success: true, userId }
 }
 
 export async function loginWithEmail(formData: FormData) {
-  const email = formData.get('email') as string
-  const password = formData.get('password') as string
+  try {
+    const email = formData.get('email') as string
+    const password = formData.get('password') as string
 
-  if (!email || !password) return { error: 'Email and password are required' }
+    if (!email || !password) return { error: 'Email and password are required' }
 
-  const user = await prisma.user.findUnique({ where: { email } })
+    const user = await prisma.user.findUnique({ where: { email } })
 
-  if (!user) {
-    return { error: 'No account found with this email. Try demo mode or create an account.' }
-  }
-
-  if (user.passwordHash) {
-    if (user.passwordHash !== hashPassword(password)) {
-      return { error: 'Invalid password' }
+    if (!user) {
+      return { error: 'No account found with this email. Try demo mode or create an account.' }
     }
+
+    if (user.passwordHash) {
+      if (user.passwordHash !== hashPassword(password)) {
+        return { error: 'Invalid password' }
+      }
+    }
+    // legacy accounts with no passwordHash are allowed through
+
+    const cookieStore = await cookies()
+    cookieStore.set('local_user_id', user.id, { path: '/', maxAge: 60 * 60 * 24 * 30 })
+    cookieStore.set('local_user_email', email, { path: '/', maxAge: 60 * 60 * 24 * 30 })
+
+    return { success: true, userId: user.id }
+  } catch (e: unknown) {
+    const message = e instanceof Error ? e.message : 'Unknown error'
+    console.error('[loginWithEmail]', message)
+    return { error: 'Invalid email or password' }
   }
-  // legacy accounts with no passwordHash are allowed through
-
-  const cookieStore = await cookies()
-  cookieStore.set('local_user_id', user.id, { path: '/', maxAge: 60 * 60 * 24 * 30 })
-  cookieStore.set('local_user_email', email, { path: '/', maxAge: 60 * 60 * 24 * 30 })
-
-  return { success: true, userId: user.id }
 }
 
 export async function toggleSubtask(subtaskId: string) {
