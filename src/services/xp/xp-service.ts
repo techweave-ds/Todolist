@@ -113,7 +113,7 @@ export class XPService {
           })
         }
 
-        return { transaction, levelInfo, totalXP: totalXPAmount }
+        return { transaction, levelInfo, totalXP: totalXPAmount, previousLevel }
       })
     } catch (error) {
       handleServiceError(error, 'xpService.awardXP')

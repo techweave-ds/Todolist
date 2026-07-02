@@ -333,14 +333,16 @@ export async function completeMissionAction(id: string, userId: string): Promise
     const authUserId = await getAuthUserId()
     if (authUserId !== userId) return { error: 'Unauthorized' }
     const mission = await missionService.complete(id, userId)
+    let rewardEvents = null
     if (mission) {
       try {
-        await rewardService.processMissionCompletion(userId, id, mission.difficulty as any)
+        const result = await rewardService.processMissionCompletion(userId, id, mission.difficulty as any)
+        rewardEvents = result.rewardEvents
       } catch (e) {
         console.error('[completeMissionAction] reward processing failed (non-fatal):', e)
       }
     }
-    return { data: mission }
+    return { data: { mission, rewardEvents } }
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error'
     console.error('[completeMissionAction]', message)

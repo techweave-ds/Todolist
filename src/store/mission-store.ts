@@ -94,14 +94,26 @@ export const useMissionStore = create<MissionState>((set, get) => ({
       set({ error: `Failed to complete mission: ${result.error}` })
       return null
     }
+    const { mission, rewardEvents } = result.data
     set(state => ({
-      missions: state.missions.map(m => m.id === id ? { ...m, ...result.data } : m),
-      selectedMission: state.selectedMission?.id === id ? result.data : state.selectedMission,
+      missions: state.missions.map(m => m.id === id ? { ...m, ...mission } : m),
+      selectedMission: state.selectedMission?.id === id ? mission : state.selectedMission,
     }))
     eventBus.emit({ type: 'MISSION_COMPLETED', payload: { missionId: id, userId } })
-    eventBus.emit({ type: 'XP_GAINED', payload: { userId, amount: (result.data as any)?.xpReward || 0, totalXP: 0, level: 0 } })
+    eventBus.emit({ type: 'XP_GAINED', payload: { userId, amount: mission?.xpReward || 0, totalXP: 0, level: 0 } })
     eventBus.emit({ type: 'REWARD_CAPSULE_OPENED', payload: { userId } })
-    return result.data as Mission | null
+    if (rewardEvents) {
+      if (rewardEvents.leveledUp) {
+        eventBus.emit({ type: 'LEVEL_UP', payload: { userId, amount: 1, totalXP: 0, level: rewardEvents.newLevel } })
+      }
+      if (rewardEvents.achievementUnlocked) {
+        eventBus.emit({ type: 'ACHIEVEMENT_UNLOCKED', payload: { userId, achievementKey: rewardEvents.achievementKey, achievementTitle: rewardEvents.achievementTitle } })
+      }
+      if (rewardEvents.streakChanged) {
+        eventBus.emit({ type: 'STREAK_UPDATED', payload: { userId, currentStreak: rewardEvents.currentStreak, longestStreak: rewardEvents.longestStreak } })
+      }
+    }
+    return mission as Mission | null
   },
 
   reopenMission: async (id: string, userId: string) => {

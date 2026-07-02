@@ -45,7 +45,8 @@ export class StreakService {
         data: { currentStreak: newStreak, longestStreak, lastActivityDate: today },
       })
 
-      if (newStreak !== streak.currentStreak) {
+      const changed = newStreak !== (streak.currentStreak || 0)
+      if (changed) {
         await eventBus.emit({
           type: 'STREAK_UPDATED',
           payload: {
@@ -57,7 +58,7 @@ export class StreakService {
         })
       }
 
-      return updatedStreak
+      return { updatedStreak, changed, previousStreak: streak.currentStreak || 0, currentStreak: newStreak, longestStreak }
     } catch (error) {
       handleServiceError(error, 'streakService.updateStreak')
     }

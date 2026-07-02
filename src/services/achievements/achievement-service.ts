@@ -5,7 +5,7 @@ import { xpService } from '@/services/xp/xp-service'
 import { handleServiceError } from '@/lib/service-error'
 
 export class AchievementService {
-  async checkAndUnlock(userId: string) {
+  async checkAndUnlock(userId: string): Promise<{ key: string; title: string } | null> {
     try {
       const progress = await prisma.userProgress.findUnique({ where: { userId } })
       const streaks = await prisma.streak.findMany({ where: { userId } })
@@ -18,6 +18,7 @@ export class AchievementService {
       const campaigns = await prisma.campaign.findMany({ where: { userId } })
 
       const allAchievements = Object.values(ACHIEVEMENTS)
+      let firstUnlocked: { key: string; title: string } | null = null
 
       for (const def of allAchievements) {
         if (unlockedKeys.includes(def.key)) continue
@@ -45,6 +46,9 @@ export class AchievementService {
 
         if (shouldUnlock) {
           await this.unlockAchievement(userId, def.key)
+          if (!firstUnlocked) {
+            firstUnlocked = { key: def.key, title: def.title }
+          }
         } else {
           const dbAchievement = await prisma.achievement.findUnique({ where: { key: def.key } })
           if (dbAchievement) {
@@ -56,6 +60,8 @@ export class AchievementService {
           }
         }
       }
+
+      return firstUnlocked
     } catch (error) {
       handleServiceError(error, 'achievementService.checkAndUnlock')
     }

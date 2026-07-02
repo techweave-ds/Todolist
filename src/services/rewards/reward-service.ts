@@ -11,10 +11,11 @@ export class RewardService {
   async processMissionCompletion(userId: string, missionId: string, difficulty: MissionDifficulty, streakDays: number = 0, hasFocusBonus: boolean = false, hasCampaignBonus: boolean = false) {
     try {
       const xpCalculation = calculateTotalXP(difficulty, streakDays, hasFocusBonus, hasCampaignBonus)
+      const xpResult = await xpService.awardXP(userId, xpCalculation.totalXP, 'mission_completed', missionId)
+      const streakResult = await streakService.updateStreak(userId)
+      const achievementResult = await achievementService.checkAndUnlock(userId)
 
-      await xpService.awardXP(userId, xpCalculation.totalXP, 'mission_completed', missionId)
-      await streakService.updateStreak(userId)
-      await achievementService.checkAndUnlock(userId)
+      const leveledUp = xpResult.levelInfo.level > xpResult.previousLevel
 
       await prisma.userProgress.update({
         where: { userId },
@@ -26,7 +27,19 @@ export class RewardService {
         payload: { userId, data: { missionId, xpCalculation } },
       })
 
-      return xpCalculation
+      return {
+        xpCalculation,
+        rewardEvents: {
+          leveledUp,
+          newLevel: xpResult.levelInfo.level,
+          streakChanged: streakResult.changed,
+          currentStreak: streakResult.currentStreak,
+          longestStreak: streakResult.longestStreak,
+          achievementUnlocked: !!achievementResult,
+          achievementKey: achievementResult?.key,
+          achievementTitle: achievementResult?.title,
+        },
+      }
     } catch (error) {
       handleServiceError(error, 'rewardService.processMissionCompletion')
     }
