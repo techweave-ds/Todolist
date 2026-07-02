@@ -10,7 +10,6 @@ import { xpService } from '@/services/xp/xp-service'
 import { XP } from '@/core/constants'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { DEMO_USER_ID, DEMO_COOKIE } from '@/lib/demo'
-import crypto from 'crypto'
 import { cookies } from 'next/headers'
 
 async function getAuthUserId(): Promise<string> {
@@ -149,8 +148,10 @@ export async function endDemo() {
   cookieStore.delete(DEMO_COOKIE)
 }
 
-function hashPassword(password: string): string {
-  return crypto.createHash('sha256').update(password).digest('hex')
+function simpleHash(s: string): string {
+  let h = 0
+  for (let i = 0; i < s.length; i++) { h = ((h << 5) - h) + s.charCodeAt(i); h |= 0 }
+  return h.toString(36)
 }
 
 export async function registerUser(formData: FormData) {
@@ -172,10 +173,10 @@ export async function registerUser(formData: FormData) {
       return { error: 'An account with this email already exists' }
     }
 
-    const userId = crypto.randomUUID()
+    const userId = 'user_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10)
 
     await prisma.user.create({
-      data: { id: userId, email, passwordHash: hashPassword(password) },
+      data: { id: userId, email, passwordHash: simpleHash(password) },
     })
 
     await ensureUserProfile(userId, displayName || email.split('@')[0])
@@ -206,7 +207,7 @@ export async function loginWithEmail(formData: FormData) {
     }
 
     if (user.passwordHash) {
-      if (user.passwordHash !== hashPassword(password)) {
+      if (user.passwordHash !== simpleHash(password)) {
         return { error: 'Invalid password' }
       }
     }
