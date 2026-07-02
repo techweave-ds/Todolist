@@ -189,7 +189,7 @@ export async function registerUser(formData: FormData) {
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error'
     console.error('[registerUser]', message)
-    return { error: 'Failed to create account. Please try again.' }
+    return { error: `Failed to create account: ${message}` }
   }
 }
 
@@ -221,7 +221,7 @@ export async function loginWithEmail(formData: FormData) {
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error'
     console.error('[loginWithEmail]', message)
-    return { error: 'Invalid email or password' }
+    return { error: `Login failed: ${message}` }
   }
 }
 
