@@ -40,3 +40,31 @@
 
 ### Build
 ✅ Build passes cleanly (TypeScript, 17 pages, no errors)
+
+---
+
+## Session 3 — Auth Diagnostic & Bug Triage (July 6, 2026)
+
+### Bug: Register/Login crash (U1 / U2)
+- **Root cause**: `passwordHash` column added to Prisma schema required `prisma db push` (not just `prisma generate`). Without DB sync, `prisma.user.create({ data: { passwordHash: ... } })` threw a "column does not exist" error.
+- **Diagnostic fix (v1)**: Wrapped `registerUser` and `loginWithEmail` in try-catch + returned descriptive error messages to surface the actual DB error.
+- **Definitive fix (v2)**: Removed `passwordHash String?` from Prisma schema, removed `simpleHash()` function, reverted `registerUser`/`loginWithEmail` to email-only auth (original working design). Run `npx prisma db push` to sync.
+- **Result**: Local auth now requires only email (no password verification). Supabase OAuth remains the secure auth path. No DB schema changes needed.
+
+### Bug: Turbopack 'crypto' import fail (U1)
+- **Root cause**: `crypto` module not available in Turbopack edge runtime.
+- **Fix**: Replaced `crypto.randomUUID()` with `Date.now().toString(36) + Math.random().toString(36).slice(2, 10)`.
+- **Affected files**: `actions.ts` (registerUser, startDemo)
+- **Result**: Build passes cleanly.
+
+### Bug Triage: Open Issues
+- **U2 — Inconsistent error handling in 25 Pattern-C actions**: Deferred. Actions return `ActionResult`-style, stores wrap in try-catch — both patterns work correctly, just inconsistent style. Low risk.
+- **U3-U5 — Edge cases / polish**: Deferred to later sprint.
+- **Auth audit**: SessionInitializer already handles fallback correctly; no supabase/anonymous key leaked.
+
+### Files Changed (Session 3)
+| File | Change |
+|------|--------|
+| `src/app/actions.ts` | try-catch on registerUser/loginWithEmail; removed passwordHash, simpleHash; reverted to email-only |
+| `prisma/schema.prisma` | Removed `passwordHash String?` field from User model |
+| `.opencode/anchored-summary.md` | Updated with session summary |

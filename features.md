@@ -4,7 +4,7 @@
 
 | Feature | Status | Files |
 |---------|--------|-------|
-| Email/password login | Implemented | `src/app/(auth)/login/page.tsx`, `src/services/auth/` |
+| Email login (local) | Implemented | `src/app/(auth)/login/page.tsx`, `src/app/actions.ts` |
 | Google OAuth | Implemented | `src/app/(auth)/login/page.tsx` |
 | GitHub OAuth | Implemented | `src/app/(auth)/login/page.tsx` |
 | Magic link | Implemented | `src/app/(auth)/login/page.tsx` |

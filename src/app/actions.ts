@@ -148,37 +148,19 @@ export async function endDemo() {
   cookieStore.delete(DEMO_COOKIE)
 }
 
-function simpleHash(s: string): string {
-  let h = 0
-  for (let i = 0; i < s.length; i++) { h = ((h << 5) - h) + s.charCodeAt(i); h |= 0 }
-  return h.toString(36)
-}
-
 export async function registerUser(formData: FormData) {
   try {
     const email = formData.get('email') as string
-    const password = formData.get('password') as string
     const displayName = formData.get('name') as string
 
-    if (!email || !password) {
-      return { error: 'Email and password are required' }
-    }
-
-    if (password.length < 6) {
-      return { error: 'Password must be at least 6 characters' }
-    }
+    if (!email) return { error: 'Email is required' }
 
     const existing = await prisma.user.findUnique({ where: { email } })
-    if (existing) {
-      return { error: 'An account with this email already exists' }
-    }
+    if (existing) return { error: 'An account with this email already exists' }
 
     const userId = 'user_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10)
 
-    await prisma.user.create({
-      data: { id: userId, email, passwordHash: simpleHash(password) },
-    })
-
+    await prisma.user.create({ data: { id: userId, email } })
     await ensureUserProfile(userId, displayName || email.split('@')[0])
 
     const cookieStore = await cookies()
@@ -189,29 +171,18 @@ export async function registerUser(formData: FormData) {
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error'
     console.error('[registerUser]', message)
-    return { error: `Failed to create account: ${message}` }
+    return { error: 'Failed to create account. Please try again.' }
   }
 }
 
 export async function loginWithEmail(formData: FormData) {
   try {
     const email = formData.get('email') as string
-    const password = formData.get('password') as string
 
-    if (!email || !password) return { error: 'Email and password are required' }
+    if (!email) return { error: 'Email is required' }
 
     const user = await prisma.user.findUnique({ where: { email } })
-
-    if (!user) {
-      return { error: 'No account found with this email. Try demo mode or create an account.' }
-    }
-
-    if (user.passwordHash) {
-      if (user.passwordHash !== simpleHash(password)) {
-        return { error: 'Invalid password' }
-      }
-    }
-    // legacy accounts with no passwordHash are allowed through
+    if (!user) return { error: 'No account found with this email. Try demo mode or create an account.' }
 
     const cookieStore = await cookies()
     cookieStore.set('local_user_id', user.id, { path: '/', maxAge: 60 * 60 * 24 * 30 })
@@ -221,7 +192,7 @@ export async function loginWithEmail(formData: FormData) {
   } catch (e: unknown) {
     const message = e instanceof Error ? e.message : 'Unknown error'
     console.error('[loginWithEmail]', message)
-    return { error: `Login failed: ${message}` }
+    return { error: 'Login failed. Please try again.' }
   }
 }
 

@@ -2,8 +2,8 @@
 
 > **Project**: Mission Control OS — AI-powered productivity operating system  
 > **Stack**: Next.js 16.2.7 · React 19 · TypeScript · TailwindCSS 4 · Prisma 5.22 · Zustand 5 · Supabase  
-> **Build**: ✅ 15 static routes · 0 TypeScript errors · 0 lint errors  
-> **Last audit**: June 3, 2026
+> **Build**: ✅ 17 routes (16 static + 1 dynamic) · 0 TypeScript errors · 0 lint errors  
+> **Last audit**: July 6, 2026
 
 ---
 
