@@ -11,7 +11,22 @@ import { xpService } from '@/services/xp/xp-service'
 import { XP } from '@/core/constants'
 import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { DEMO_USER_ID, DEMO_COOKIE } from '@/lib/demo'
-import { cookies } from 'next/headers'
+import * as Sentry from '@sentry/nextjs'
+import { cookies, headers } from 'next/headers'
+import { rateLimiters, checkRateLimit } from '@/lib/rate-limit'
+
+function logAndReport(context: string, error: unknown): void {
+  const message = error instanceof Error ? error.message : 'Unknown error'
+  console.error(`[${context}]`, message, error)
+  if (error instanceof Error && !(error as any).statusCode) {
+    Sentry.captureException(error, { tags: { action: context } })
+  }
+}
+
+async function getClientIp(): Promise<string> {
+  const h = await headers()
+  return h.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+}
 
 async function getAuthUserId(): Promise<string> {
   const cookieStore = await cookies()
@@ -151,6 +166,8 @@ export async function endDemo() {
 
 export async function registerUser(formData: FormData) {
   try {
+    const ip = await getClientIp()
+    checkRateLimit(rateLimiters.auth, `register:${ip}`)
     const email = formData.get('email') as string
     const displayName = formData.get('name') as string
 
@@ -170,14 +187,15 @@ export async function registerUser(formData: FormData) {
 
     return { success: true, userId }
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Unknown error'
-    console.error('[registerUser]', message)
+    logAndReport('registerUser', e)
     return { error: 'Failed to create account. Please try again.' }
   }
 }
 
 export async function loginWithEmail(formData: FormData) {
   try {
+    const ip = await getClientIp()
+    checkRateLimit(rateLimiters.auth, `login:${ip}`)
     const email = formData.get('email') as string
 
     if (!email) return { error: 'Email is required' }
@@ -191,8 +209,7 @@ export async function loginWithEmail(formData: FormData) {
 
     return { success: true, userId: user.id }
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Unknown error'
-    console.error('[loginWithEmail]', message)
+    logAndReport('loginWithEmail', e)
     return { error: 'Login failed. Please try again.' }
   }
 }
@@ -241,35 +258,34 @@ export async function fetchMissionsAction(userId: string): Promise<ActionResult<
     const missions = await missionService.getByUser(userId)
     return { data: missions }
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Unknown error'
-    console.error('[fetchMissionsAction]', message)
-    return { error: message }
+    logAndReport('fetchMissionsAction', e)
+    return { error: 'Failed to fetch missions' }
   }
 }
 
 export async function createMissionAction(input: import('@/core/types').MissionCreateInput, userId: string): Promise<ActionResult<any>> {
   try {
+    checkRateLimit(rateLimiters.mutations, `mission:create:${userId}`)
     const authUserId = await getAuthUserId()
     if (authUserId !== userId) return { error: 'Unauthorized' }
     const mission = await missionService.create(input, userId)
     return { data: mission }
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Unknown error'
-    console.error('[createMissionAction]', message)
-    return { error: message }
+    logAndReport('createMissionAction', e)
+    return { error: 'Failed to create mission' }
   }
 }
 
 export async function updateMissionAction(id: string, input: import('@/core/types').MissionUpdateInput, userId: string): Promise<ActionResult<any>> {
   try {
+    checkRateLimit(rateLimiters.mutations, `mission:update:${userId}`)
     const authUserId = await getAuthUserId()
     if (authUserId !== userId) return { error: 'Unauthorized' }
     const mission = await missionService.update(id, input, userId)
     return { data: mission }
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Unknown error'
-    console.error('[updateMissionAction]', message)
-    return { error: message }
+    logAndReport('updateMissionAction', e)
+    return { error: 'Failed to update mission' }
   }
 }
 
@@ -280,14 +296,14 @@ export async function reopenMissionAction(id: string, userId: string): Promise<A
     const mission = await missionService.reopen(id, userId)
     return { data: mission }
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Unknown error'
-    console.error('[reopenMissionAction]', message)
-    return { error: message }
+    logAndReport('reopenMissionAction', e)
+    return { error: 'Failed to reopen mission' }
   }
 }
 
 export async function completeMissionAction(id: string, userId: string): Promise<ActionResult<any>> {
   try {
+    checkRateLimit(rateLimiters.mutations, `mission:complete:${userId}`)
     const authUserId = await getAuthUserId()
     if (authUserId !== userId) return { error: 'Unauthorized' }
     const mission = await missionService.complete(id, userId)
@@ -302,22 +318,21 @@ export async function completeMissionAction(id: string, userId: string): Promise
     }
     return { data: { mission, rewardEvents } }
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Unknown error'
-    console.error('[completeMissionAction]', message)
-    return { error: message }
+    logAndReport('completeMissionAction', e)
+    return { error: 'Failed to complete mission' }
   }
 }
 
 export async function deleteMissionAction(id: string, userId: string): Promise<ActionResult<any>> {
   try {
+    checkRateLimit(rateLimiters.mutations, `mission:delete:${userId}`)
     const authUserId = await getAuthUserId()
     if (authUserId !== userId) return { error: 'Unauthorized' }
     await missionService.delete(id, userId)
     return { data: null }
   } catch (e: unknown) {
-    const message = e instanceof Error ? e.message : 'Unknown error'
-    console.error('[deleteMissionAction]', message)
-    return { error: message }
+    logAndReport('deleteMissionAction', e)
+    return { error: 'Failed to delete mission' }
   }
 }
 
@@ -329,6 +344,7 @@ export async function fetchCampaignsAction(userId: string) {
 }
 
 export async function createCampaignAction(input: import('@/core/types').CampaignCreateInput, userId: string) {
+  checkRateLimit(rateLimiters.mutations, `campaign:create:${userId}`)
   const authUserId = await getAuthUserId()
   if (authUserId !== userId) throw new Error('Unauthorized')
   return campaignService.create(input, userId)
@@ -341,6 +357,7 @@ export async function updateCampaignAction(id: string, input: import('@/core/typ
 }
 
 export async function deleteCampaignAction(id: string, userId: string) {
+  checkRateLimit(rateLimiters.mutations, `campaign:delete:${userId}`)
   const authUserId = await getAuthUserId()
   if (authUserId !== userId) throw new Error('Unauthorized')
   return campaignService.delete(id, userId)
@@ -386,6 +403,7 @@ export async function getXPHistoryAction(userId: string) {
 
 // --- Focus Actions ---
 export async function startFocusSessionAction(input: import('@/core/types').FocusSessionInput, userId: string) {
+  checkRateLimit(rateLimiters.mutations, `focus:start:${userId}`)
   const authUserId = await getAuthUserId()
   if (authUserId !== userId) throw new Error('Unauthorized')
   const { focusService } = await import('@/services/focus/focus-service')
@@ -393,6 +411,7 @@ export async function startFocusSessionAction(input: import('@/core/types').Focu
 }
 
 export async function endFocusSessionAction(sessionId: string, userId: string, data: { actualDuration: number; completed: boolean; distractions: number }) {
+  checkRateLimit(rateLimiters.mutations, `focus:end:${userId}`)
   const authUserId = await getAuthUserId()
   if (authUserId !== userId) throw new Error('Unauthorized')
   const { focusService } = await import('@/services/focus/focus-service')
@@ -458,6 +477,7 @@ export async function getMemoryLaneTimelineAction(userId: string) {
 
 // --- AI Actions ---
 export async function generateDailyBriefingAction(userId: string) {
+  checkRateLimit(rateLimiters.ai, `ai:briefing:${userId}`)
   const authUserId = await getAuthUserId()
   if (authUserId !== userId) throw new Error('Unauthorized')
   const { aiService } = await import('@/services/ai/ai-service')
@@ -465,6 +485,7 @@ export async function generateDailyBriefingAction(userId: string) {
 }
 
 export async function generateWeeklyPlanAction(userId: string) {
+  checkRateLimit(rateLimiters.ai, `ai:weeklyplan:${userId}`)
   const authUserId = await getAuthUserId()
   if (authUserId !== userId) throw new Error('Unauthorized')
   const { aiService } = await import('@/services/ai/ai-service')
@@ -472,6 +493,7 @@ export async function generateWeeklyPlanAction(userId: string) {
 }
 
 export async function breakDownGoalAction(goal: string, userId: string) {
+  checkRateLimit(rateLimiters.ai, `ai:goalbreakdown:${userId}`)
   const authUserId = await getAuthUserId()
   if (authUserId !== userId) throw new Error('Unauthorized')
   const { aiService } = await import('@/services/ai/ai-service')
@@ -479,6 +501,7 @@ export async function breakDownGoalAction(goal: string, userId: string) {
 }
 
 export async function getCoachingAction(question: string, userId: string) {
+  checkRateLimit(rateLimiters.ai, `ai:coaching:${userId}`)
   const authUserId = await getAuthUserId()
   if (authUserId !== userId) throw new Error('Unauthorized')
   const { aiService } = await import('@/services/ai/ai-service')
@@ -486,6 +509,7 @@ export async function getCoachingAction(question: string, userId: string) {
 }
 
 export async function getMotivationAction(userId: string) {
+  checkRateLimit(rateLimiters.ai, `ai:motivation:${userId}`)
   const authUserId = await getAuthUserId()
   if (authUserId !== userId) throw new Error('Unauthorized')
   const { aiService } = await import('@/services/ai/ai-service')

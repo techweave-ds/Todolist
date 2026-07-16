@@ -51,7 +51,7 @@ interface FocusState {
   fetchHistory: (userId: string) => Promise<void>
   fetchStats: (userId: string) => Promise<void>
   fetchWeeklyData: (userId: string) => Promise<void>
-  setTimeRemaining: (t: number) => void
+  setTimeRemaining: (t: number | ((prev: number) => number)) => void
 }
 
 export const useFocusStore = create<FocusState>((set) => ({
@@ -116,5 +116,5 @@ export const useFocusStore = create<FocusState>((set) => ({
     }
   },
 
-  setTimeRemaining: (t) => set({ timeRemaining: t }),
+  setTimeRemaining: (t) => set((state) => ({ timeRemaining: typeof t === 'function' ? t(state.timeRemaining) : t })),
 }))

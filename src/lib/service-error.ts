@@ -1,3 +1,5 @@
+import * as Sentry from '@sentry/nextjs'
+
 export class ServiceError extends Error {
   constructor(
     message: string,
@@ -13,6 +15,7 @@ export function handleServiceError(error: unknown, context: string): never {
   if (error instanceof ServiceError) throw error
   const message = error instanceof Error ? error.message : 'Unknown error'
   console.error(`[${context}] ${message}`, error)
+  Sentry.captureException(error instanceof Error ? error : new Error(message), { tags: { context } })
   throw new ServiceError(`Service error: ${context} — ${message}`, 'SERVICE_ERROR', 500)
 }
 
