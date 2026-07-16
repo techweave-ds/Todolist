@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { eventBus } from '@/core/events'
 import { FocusSessionInput } from '@/core/types'
+import { analyticsService } from '@/services/analytics/analytics-service'
 import { generateId } from '@/lib/utils'
 import { handleServiceError } from '@/lib/service-error'
 
@@ -28,6 +29,8 @@ export class FocusService {
           data: { type: input.type, environment: input.environment },
         },
       })
+
+      analyticsService.trackEvent(userId, 'focus_started', { sessionId: session.id, type: input.type, duration: input.duration })
 
       return session
     } catch (error) {
@@ -106,6 +109,8 @@ export class FocusService {
             data: { score: session.score, distractions },
           },
         })
+
+        analyticsService.trackEvent(userId, 'focus_ended', { sessionId, duration: actualDuration, completed, score: session.score })
 
         return session
       })

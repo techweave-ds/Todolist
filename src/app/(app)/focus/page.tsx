@@ -52,13 +52,16 @@ export default function FocusPage() {
     if (!isActive || isPaused) return
 
     const interval = setInterval(() => {
-      setTimeRemaining(timeRemaining - 1)
-      setMinutes(Math.floor((timeRemaining - 1) / 60))
-      setSeconds((timeRemaining - 1) % 60)
+      setTimeRemaining(t => {
+        const newTime = t - 1
+        setMinutes(Math.floor(newTime / 60))
+        setSeconds(newTime % 60)
+        return newTime
+      })
     }, 1000)
 
     return () => clearInterval(interval)
-  }, [isActive, isPaused, timeRemaining, setTimeRemaining])
+  }, [isActive, isPaused, setTimeRemaining])
 
   useEffect(() => {
     if (!isActive || timeRemaining > 0 || !currentSession || endedRef.current || !userId) return

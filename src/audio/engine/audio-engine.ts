@@ -532,13 +532,16 @@ class AudioEngineImpl {
 
   setupEventSubscriptions(): void {
     eventBus.subscribe('MISSION_COMPLETED', async () => { await this.playEffect('mission_complete'); });
+    eventBus.subscribe('MISSION_CREATED', async () => { await this.playEffect('notification'); });
+    eventBus.subscribe('MISSION_DELETED', async () => { await this.playEffect('notification'); });
+    eventBus.subscribe('CAMPAIGN_CREATED', async () => { await this.playEffect('notification'); });
+    eventBus.subscribe('CAMPAIGN_COMPLETED', async () => { await this.playEffect('campaign_complete'); });
     eventBus.subscribe('LEVEL_UP', async () => { await this.playEffect('level_up'); });
     eventBus.subscribe('ACHIEVEMENT_UNLOCKED', async () => { await this.playEffect('achievement'); });
     eventBus.subscribe('XP_GAINED', async () => { await this.playEffect('xp_gain'); });
     eventBus.subscribe('FOCUS_STARTED', async () => { await this.playEffect('focus_start'); });
     eventBus.subscribe('FOCUS_ENDED', async () => { await this.playEffect('focus_end'); });
     eventBus.subscribe('STREAK_UPDATED', async () => { await this.playEffect('streak_updated'); });
-    eventBus.subscribe('CAMPAIGN_COMPLETED', async () => { await this.playEffect('campaign_complete'); });
     eventBus.subscribe('REWARD_CAPSULE_OPENED', async () => { await this.playEffect('capsule_open'); });
   }
 }

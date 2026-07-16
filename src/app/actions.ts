@@ -4,6 +4,7 @@ import { prisma } from '@/lib/prisma'
 import { missionService } from '@/services/missions/mission-service'
 import { campaignService } from '@/services/campaigns/campaign-service'
 import { notificationService } from '@/services/notifications/notification-service'
+import { memoryLaneService } from '@/services/memory-lane/memory-lane-service'
 import { analyticsService } from '@/services/analytics/analytics-service'
 import { rewardService } from '@/services/rewards/reward-service'
 import { xpService } from '@/services/xp/xp-service'
@@ -401,6 +402,9 @@ export async function endFocusSessionAction(sessionId: string, userId: string, d
       const focusXP = Math.round(data.actualDuration * 0.5)
       const total = focusXP + Math.round(focusXP * XP.FOCUS_BONUS)
       await xpService.awardXP(userId, total, 'focus_bonus', sessionId)
+
+      notificationService.create(userId, 'focus', 'Focus Session Complete', `Completed ${data.actualDuration} min session with ${data.distractions} distractions`)
+      memoryLaneService.addEntry(userId, 'major_win', `Focus Session: ${data.actualDuration} minutes`, `Completed a ${data.actualDuration}-minute focus session`, { sessionId, score: (session as any)?.score }, 5)
     } catch (e) {
       console.error('[endFocusSessionAction] XP award failed (non-fatal):', e)
     }

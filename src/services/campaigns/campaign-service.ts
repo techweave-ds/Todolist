@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma'
 import { eventBus } from '@/core/events'
 import { CampaignCreateInput, CampaignUpdateInput } from '@/core/types'
+import { analyticsService } from '@/services/analytics/analytics-service'
 import { generateId } from '@/lib/utils'
 import { handleServiceError } from '@/lib/service-error'
 
@@ -23,6 +24,8 @@ export class CampaignService {
         type: 'CAMPAIGN_CREATED',
         payload: { campaignId: campaign.id, userId, data: campaign },
       })
+
+      analyticsService.trackEvent(userId, 'campaign_created', { campaignId: campaign.id, title: campaign.title })
 
       return campaign
     } catch (error) {
@@ -50,11 +53,15 @@ export class CampaignService {
           type: 'CAMPAIGN_COMPLETED',
           payload: { campaignId: id, userId, data: campaign },
         })
+
+        analyticsService.trackEvent(userId, 'campaign_completed', { campaignId: id, title: campaign.title })
       } else {
         await eventBus.emit({
           type: 'CAMPAIGN_UPDATED',
           payload: { campaignId: id, userId, data: campaign },
         })
+
+        analyticsService.trackEvent(userId, 'campaign_updated', { campaignId: id })
       }
 
       return campaign

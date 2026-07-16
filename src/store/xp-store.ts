@@ -37,7 +37,7 @@ export const useXPStore = create<XPState>((set) => ({
     try {
       const info = await getLevelInfoAction(userId) as any
       set({
-        level: info.currentLevel,
+        level: info.level,
         currentXP: info.currentXP,
         xpToNextLevel: info.xpToNextLevel,
         progress: info.progress,

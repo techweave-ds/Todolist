@@ -4,6 +4,7 @@ import { eventBus } from '@/core/events'
 import { MissionCreateInput, MissionUpdateInput } from '@/core/types'
 import { calculateMissionXP } from '@/services/xp/xp-service'
 import { notificationService } from '@/services/notifications/notification-service'
+import { analyticsService } from '@/services/analytics/analytics-service'
 import { generateId } from '@/lib/utils'
 import { handleServiceError } from '@/lib/service-error'
 
@@ -50,6 +51,8 @@ export class MissionService {
         payload: { missionId: mission.id, userId, data: mission },
       })
 
+      analyticsService.trackEvent(userId, 'mission_created', { missionId: mission.id, difficulty: mission.difficulty, priority: mission.priority })
+
       return mission
     } catch (error) {
       handleServiceError(error, 'missionService.create')
@@ -93,11 +96,15 @@ export class MissionService {
           type: 'MISSION_COMPLETED',
           payload: { missionId: id, userId, data: mission },
         })
+
+        analyticsService.trackEvent(userId, 'mission_completed', { missionId: id, difficulty: mission.difficulty, xpReward: mission.xpReward })
       } else {
         await eventBus.emit({
           type: 'MISSION_UPDATED',
           payload: { missionId: id, userId, data: { ...input, mission } },
         })
+
+        analyticsService.trackEvent(userId, 'mission_updated', { missionId: id })
       }
 
       return mission
@@ -114,6 +121,8 @@ export class MissionService {
         type: 'MISSION_DELETED',
         payload: { missionId: id, userId },
       })
+
+      analyticsService.trackEvent(userId, 'mission_deleted', { missionId: id })
     } catch (error) {
       handleServiceError(error, 'missionService.delete')
     }
