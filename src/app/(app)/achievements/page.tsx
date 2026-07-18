@@ -8,15 +8,15 @@ import { Lock, Unlock } from 'lucide-react'
 
 const rarityColors: Record<string, string> = {
   common: 'from-gray-400 to-gray-300',
-  rare: 'from-blue-500 to-purple-500',
-  epic: 'from-purple-500 to-pink-500',
+  rare: 'from-blue-500 to-cyan-500',
+  epic: 'from-primary to-accent',
   legendary: 'from-yellow-400 to-orange-500',
 }
 
 const rarityBg: Record<string, string> = {
   common: 'bg-gray-500/10 border-gray-500/20',
   rare: 'bg-blue-500/10 border-blue-500/20',
-  epic: 'bg-purple-500/10 border-purple-500/20',
+  epic: 'bg-primary/10 border-primary/20',
   legendary: 'bg-yellow-500/10 border-yellow-500/20',
 }
 
@@ -63,7 +63,7 @@ export default function AchievementsPage() {
               <div className="flex items-center justify-between mt-3">
                 <span className={`text-[10px] px-2 py-0.5 rounded-full ${
                   String(def.rarity) === 'legendary' ? 'bg-yellow-500/20 text-yellow-500' :
-                  def.rarity === 'epic' ? 'bg-purple-500/20 text-purple-500' :
+                  def.rarity === 'epic' ? 'bg-primary/20 text-primary' :
                   def.rarity === 'rare' ? 'bg-blue-500/20 text-blue-500' :
                   'bg-gray-500/20 text-gray-400'
                 }`}>

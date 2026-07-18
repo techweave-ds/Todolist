@@ -24,7 +24,7 @@ function CoreCrystal({ level }: { level: number }) {
         chromaticAberration={0.3}
         anisotropy={0.5}
         distortion={0.2}
-        color="#8B5CF6"
+        color="var(--primary, #E8A33D)"
         metalness={0.1}
       />
     </mesh>
@@ -80,7 +80,7 @@ function FloatingPlatform() {
     <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.8, 0]}>
       <ringGeometry args={[1.2, 2, 64]} />
       <meshPhysicalMaterial
-        color="#1a1a2e"
+        color="var(--background, #1a1a2e)"
         metalness={0.8}
         roughness={0.2}
         transparent
@@ -105,7 +105,7 @@ function Particles({ count = 50 }: { count?: number }) {
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
-      <pointsMaterial size={0.02} color="#8B5CF6" transparent opacity={0.4} sizeAttenuation />
+      <pointsMaterial size={0.02} color="var(--primary, #E8A33D)" transparent opacity={0.4} sizeAttenuation />
     </points>
   )
 }
@@ -119,6 +119,7 @@ export function WorkspaceCanvas({ level, theme }: { level: number; theme: string
       'aurora': ['#10B981', '#3B82F6', '#8B5CF6', '#F59E0B'],
       'cyber': ['#EC4899', '#F59E0B', '#06B6D4', '#8B5CF6'],
       'minimal': ['#6B7280', '#9CA3AF', '#D1D5DB', '#F3F4F6'],
+      'signal-room': ['#E8A33D', '#D97706', '#B45309', '#F59E0B'],
     }
     return palette[theme] || palette['neon-dreams']
   }, [theme])

@@ -242,6 +242,7 @@ export default function SettingsPage() {
                 { id: 'aurora', name: 'Aurora', gradient: 'from-green-500 to-blue-500' },
                 { id: 'cyber', name: 'Cyber Synth', gradient: 'from-pink-500 to-yellow-500' },
                 { id: 'minimal', name: 'Minimal Light', gradient: 'from-gray-100 to-white' },
+                { id: 'signal-room', name: 'Signal Room', gradient: 'from-amber-500 to-yellow-600' },
               ].map(theme => (
                 <button
                   key={theme.id}

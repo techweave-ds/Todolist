@@ -16,8 +16,8 @@ export function LevelProgress({ level, currentXp, xpToNextLevel, className }: Le
   return (
     <div className={cn("space-y-1", className)}>
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium">Level {level}</span>
-        <span className="text-xs text-muted-foreground">
+        <span className="text-sm font-medium font-data">Level {level}</span>
+        <span className="text-xs text-muted-foreground font-data">
           {currentXp} / {xpToNextLevel} XP
         </span>
       </div>

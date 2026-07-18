@@ -45,7 +45,7 @@ export function CommanderProfile() {
           </div>
           <div>
             <div className="text-xs text-muted-foreground">Commander Rank</div>
-            <div className="text-sm font-semibold flex items-center gap-2">
+            <div className="text-sm font-semibold font-data flex items-center gap-2">
               {rank.title}
               <span className="text-xs text-muted-foreground font-normal">Lv.{level}</span>
             </div>
@@ -54,7 +54,7 @@ export function CommanderProfile() {
 
         <div className="space-y-2">
           <div className="flex justify-between text-xs text-muted-foreground">
-            <span className="flex items-center gap-1">
+            <span className="flex items-center gap-1 font-data">
               <Trophy className="w-3 h-3 text-primary/60" />
               {totalXP.toLocaleString()} Total XP
             </span>

@@ -27,7 +27,7 @@ const steps = [
     title: 'Campaigns',
     icon: Target,
     description: 'Group related missions into campaigns — like "Q2 Product Launch" or "Learning Kubernetes". Track progress across mission clusters.',
-    color: 'from-purple-500 to-pink-500',
+    color: 'from-primary to-accent',
   },
   {
     title: 'Focus Mode',
@@ -45,7 +45,7 @@ const steps = [
     title: 'AI Planning',
     icon: Brain,
     description: 'Let AI break down big goals into missions, generate weekly plans, get motivational coaching, and create smart daily briefings.',
-    color: 'from-violet-500 to-indigo-500',
+    color: 'from-accent to-amber-600',
   },
   {
     title: 'Analytics',

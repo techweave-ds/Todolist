@@ -179,7 +179,7 @@ export default function FocusPage() {
           )}
 
           <div className="text-center mb-8">
-            <div className="text-7xl font-mono font-bold tracking-wider tabular-nums">
+            <div className="text-7xl font-data font-bold tracking-wider">
               {minutesDisplay}:{secondsDisplay}
             </div>
             <p className="text-sm text-muted-foreground mt-2">

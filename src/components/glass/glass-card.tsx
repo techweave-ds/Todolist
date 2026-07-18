@@ -22,13 +22,13 @@ export function GlassCard({ children, className, hover = false, glow = false, gr
       className={cn(
         "rounded-xl border border-white/[0.06] bg-white/[0.03] backdrop-blur-xl p-6 relative overflow-hidden",
         hover && "hover:bg-white/[0.06] hover:border-white/[0.1] transition-all duration-300 cursor-pointer",
-        glow && "shadow-[0_0_20px_rgba(59,130,246,0.1)]",
+        glow && "shadow-[0_0_20px_rgba(232,163,61,0.1)]",
         gradient && "gradient-border",
         className
       )}
     >
       {gradient && (
-        <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 via-purple-500/5 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-accent/5 to-transparent pointer-events-none" />
       )}
       <div className="relative z-10">{children}</div>
     </motion.div>

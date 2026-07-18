@@ -9,7 +9,7 @@ const testimonials = [
     quote: 'Mission Control OS turned my chaotic task list into a strategic campaign. The AI coach alone saved me hours of planning every week.',
     name: 'Alex Chen',
     role: 'Product Manager',
-    gradient: 'from-purple-500/10 via-transparent to-blue-500/10',
+    gradient: 'from-primary/10 via-transparent to-accent/10',
   },
   {
     quote: 'The focus sessions with ambient sound environments completely changed how I work. My deep work time went from 2 to 5 hours daily.',
@@ -27,7 +27,7 @@ const testimonials = [
     quote: 'The living workspace is genius. Every achievement adds something new to my 3D environment. It makes progress tangible.',
     name: 'Priya Patel',
     role: 'Graduate Student',
-    gradient: 'from-violet-500/10 via-transparent to-indigo-500/10',
+    gradient: 'from-primary/10 via-transparent to-amber-600/10',
   },
   {
     quote: 'I was skeptical about AI in a productivity tool. Now I cannot imagine planning my week without it. The daily briefings are eerily accurate.',

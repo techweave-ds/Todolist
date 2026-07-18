@@ -29,7 +29,7 @@ const fadeUp = {
 }
 
 const quickActions = [
-  { label: 'New Mission', href: '/missions?create=true', icon: Target, gradient: 'from-blue-500 to-purple-500' },
+  { label: 'New Mission', href: '/missions?create=true', icon: Target, gradient: 'from-primary to-accent' },
   { label: 'Start Focus', href: '/focus', icon: Brain, gradient: 'from-green-500 to-teal-500' },
   { label: 'View Campaigns', href: '/campaigns', icon: Calendar, gradient: 'from-orange-500 to-red-500' },
   { label: 'Achievements', href: '/achievements', icon: Trophy, gradient: 'from-yellow-500 to-pink-500' },
@@ -124,7 +124,7 @@ export default function DashboardPage() {
                   <Target className="w-4 h-4 text-primary" />
                   <span className="text-xs text-muted-foreground">Today&apos;s Missions</span>
                 </div>
-                <p className="text-2xl font-bold tabular-nums">{stats?.todayMissions || 0}</p>
+                <p className="text-2xl font-bold font-data">{stats?.todayMissions || 0}</p>
                 <div className="mt-1 h-0.5 w-0 group-hover:w-full bg-primary/30 transition-all duration-500 rounded-full" />
               </div>
               <div className="glass rounded-xl p-4 group hover:bg-muted/20 transition-colors">
@@ -132,7 +132,7 @@ export default function DashboardPage() {
                   <Zap className="w-4 h-4 text-amber-400" />
                   <span className="text-xs text-muted-foreground">Streak</span>
                 </div>
-                <p className="text-2xl font-bold tabular-nums">{stats?.dailyStreak || 0}d</p>
+                <p className="text-2xl font-bold font-data">{stats?.dailyStreak || 0}d</p>
                 <div className="mt-1 h-0.5 w-0 group-hover:w-full bg-amber-400/30 transition-all duration-500 rounded-full" />
               </div>
               <div className="glass rounded-xl p-4 group hover:bg-muted/20 transition-colors">
@@ -140,7 +140,7 @@ export default function DashboardPage() {
                   <Brain className="w-4 h-4 text-emerald-400" />
                   <span className="text-xs text-muted-foreground">Focus Score</span>
                 </div>
-                <p className="text-2xl font-bold tabular-nums">{stats?.focusScore || 0}</p>
+                <p className="text-2xl font-bold font-data">{stats?.focusScore || 0}</p>
                 <div className="mt-1 h-0.5 w-0 group-hover:w-full bg-emerald-400/30 transition-all duration-500 rounded-full" />
               </div>
               <div className="glass rounded-xl p-4 group hover:bg-muted/20 transition-colors">
@@ -148,7 +148,7 @@ export default function DashboardPage() {
                   <Trophy className="w-4 h-4 text-primary/60" />
                   <span className="text-xs text-muted-foreground">Achievements</span>
                 </div>
-                <p className="text-2xl font-bold tabular-nums">{stats?.recentAchievements?.length || 0}</p>
+                <p className="text-2xl font-bold font-data">{stats?.recentAchievements?.length || 0}</p>
                 <div className="mt-1 h-0.5 w-0 group-hover:w-full bg-primary/30 transition-all duration-500 rounded-full" />
               </div>
             </>

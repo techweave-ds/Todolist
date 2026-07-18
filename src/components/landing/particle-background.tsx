@@ -6,7 +6,7 @@ import * as THREE from 'three'
 
 const PARTICLE_COUNT = 2000
 const SPREAD = 15
-const COLORS = ['#a855f7', '#6366f1', '#8b5cf6', '#ec4899']
+const COLORS = ['#d97706', '#b45309', '#f59e0b', '#e8a33d']
 
 function ParticleField({ mouse }: { mouse: React.MutableRefObject<{ x: number; y: number }> }) {
   const meshRef = useRef<THREE.Points>(null)

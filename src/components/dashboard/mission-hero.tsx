@@ -113,7 +113,7 @@ export function MissionHero() {
           </span>
         </span>
         <span className="flex items-center gap-1.5">
-          <Brain className="w-3.5 h-3.5 text-purple-400/40" />
+          <Brain className="w-3.5 h-3.5 text-accent/40" />
           {stats?.todayCompleted ?? 0} completed today
         </span>
       </div>

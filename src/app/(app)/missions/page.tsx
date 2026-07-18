@@ -56,6 +56,7 @@ export default function MissionsPage() {
   const [tags, setTags] = useState('')
   const [category, setCategory] = useState('')
   const [completedXP, setCompletedXP] = useState<{ missionId: string; amount: number } | null>(null)
+  const [stampAnimations, setStampAnimations] = useState<Record<string, boolean>>({})
   const [creating, setCreating] = useState(false)
   const [completingId, setCompletingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -75,6 +76,8 @@ export default function MissionsPage() {
     setCompletingId(null)
     if (result) {
       setCompletedXP({ missionId: mission.id, amount: result.xpReward })
+      setStampAnimations(prev => ({ ...prev, [mission.id]: true }))
+      setTimeout(() => setStampAnimations(prev => ({ ...prev, [mission.id]: false })), 600)
       setTimeout(() => setCompletedXP(null), 2000)
     }
   }, [userId, completeMission, reopenMission, completingId])
@@ -400,6 +403,14 @@ export default function MissionsPage() {
                 show={completedXP?.missionId === mission.id}
                 className="absolute inset-0 flex items-center justify-center z-10"
               />
+              {mission.status === 'completed' && (
+                <span
+                  key={mission.id}
+                  className={`mission-stamp px-3 py-1 text-xs absolute top-3 right-3 ${stampAnimations[mission.id] ? 'stamp-hit' : ''}`}
+                >
+                  complete
+                </span>
+              )}
               <div className="flex items-start gap-3">
                 <button
                   onClick={() => handleComplete(mission)}

@@ -15,10 +15,10 @@ const typeIcons: Record<string, any> = {
 
 const typeColors: Record<string, string> = {
   achievement: 'from-yellow-500 to-orange-500',
-  milestone: 'from-blue-500 to-purple-500',
+  milestone: 'from-blue-500 to-cyan-500',
   campaign_complete: 'from-green-500 to-teal-500',
   streak_record: 'from-red-500 to-pink-500',
-  major_win: 'from-purple-500 to-pink-500',
+  major_win: 'from-primary to-accent',
 }
 
 export default function MemoryLanePage() {

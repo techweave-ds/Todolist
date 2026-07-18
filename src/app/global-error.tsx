@@ -16,7 +16,7 @@ export default function GlobalError({
 
   return (
     <html>
-      <body className="dark antialiased" style={{ margin: 0, background: '#0a0a0b', color: '#e4e4e7' }}>
+      <body className="dark antialiased" style={{ margin: 0 }}>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: 'system-ui, sans-serif', textAlign: 'center', padding: '2rem' }}>
           <h1 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem' }}>Something went wrong</h1>
           <p style={{ color: '#a1a1aa', marginBottom: '1.5rem' }}>An unexpected error occurred. Our team has been notified.</p>

@@ -16,7 +16,7 @@ export function Progress({ value, max = 100, className, indicatorClassName }: Pr
     <div className={cn("h-2 rounded-full bg-white/[0.06] overflow-hidden", className)}>
       <div
         className={cn(
-          "h-full rounded-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-500 ease-out",
+          "h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all duration-500 ease-out",
           indicatorClassName
         )}
         style={{ width: `${percentage}%` }}
