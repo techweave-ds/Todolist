@@ -3,30 +3,33 @@
 import { useEffect } from 'react'
 import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 import { useAppStore } from '@/store/app-store'
-import { ensureUserProfile } from '@/app/actions'
-import { DEMO_COOKIE } from '@/lib/demo'
-
-function getCookie(name: string): string | null {
-  if (typeof document === 'undefined') return null
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`))
-  return match ? decodeURIComponent(match[1]) : null
-}
+import { ensureUserProfile, getCurrentUser } from '@/app/actions'
 
 export function SessionInitializer() {
   const setUserId = useAppStore(s => s.setUserId)
   const setDemoMode = useAppStore(s => s.setDemoMode)
 
   useEffect(() => {
-    if (getCookie(DEMO_COOKIE) === 'true') {
-      setDemoMode()
-      return
+    let cancelled = false
+
+    const initLocal = async () => {
+      try {
+        const currentUser = await getCurrentUser()
+        if (cancelled) return
+        if (!currentUser) return
+
+        if (currentUser.isDemo) {
+          setDemoMode()
+          return
+        }
+
+        setUserId(currentUser.userId)
+      } catch {
+        // silent
+      }
     }
 
-    const localUserId = getCookie('local_user_id')
-    if (localUserId) {
-      setUserId(localUserId)
-      return
-    }
+    initLocal()
 
     if (!isSupabaseConfigured || !supabase) return
 
@@ -60,7 +63,10 @@ export function SessionInitializer() {
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      cancelled = true
+      subscription.unsubscribe()
+    }
   }, [setUserId, setDemoMode])
 
   return null

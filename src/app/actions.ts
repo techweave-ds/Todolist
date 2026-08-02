@@ -9,8 +9,8 @@ import { analyticsService } from '@/services/analytics/analytics-service'
 import { rewardService } from '@/services/rewards/reward-service'
 import { xpService } from '@/services/xp/xp-service'
 import { XP } from '@/core/constants'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
 import { DEMO_USER_ID, DEMO_COOKIE } from '@/lib/demo'
+import { hashPassword, verifyPassword, createSession, getAuthUserId, getSessionUser, destroySession } from '@/lib/auth'
 import * as Sentry from '@sentry/nextjs'
 import { cookies, headers } from 'next/headers'
 import { rateLimiters, checkRateLimit } from '@/lib/rate-limit'
@@ -26,24 +26,6 @@ function logAndReport(context: string, error: unknown): void {
 async function getClientIp(): Promise<string> {
   const h = await headers()
   return h.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
-}
-
-async function getAuthUserId(): Promise<string> {
-  const cookieStore = await cookies()
-  const isDemo = cookieStore.get(DEMO_COOKIE)?.value === 'true'
-  if (isDemo) return DEMO_USER_ID
-
-  const localUserId = cookieStore.get('local_user_id')?.value
-  if (localUserId) return localUserId
-
-  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    throw new Error('Unauthorized — no session found. Please log in or create an account.')
-  }
-
-  const supabase = await createSupabaseServerClient()
-  const { data: { user }, error } = await supabase.auth.getUser()
-  if (error || !user) throw new Error('Unauthorized')
-  return user.id
 }
 
 export async function getDashboardData() {
@@ -156,7 +138,7 @@ export async function startDemo() {
   }
 
   const cookieStore = await cookies()
-  cookieStore.set(DEMO_COOKIE, 'true', { path: '/', maxAge: 60 * 60 * 24 })
+  cookieStore.set(DEMO_COOKIE, 'true', { path: '/', maxAge: 60 * 60 * 24, httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' })
 }
 
 export async function endDemo() {
@@ -167,23 +149,23 @@ export async function endDemo() {
 export async function registerUser(formData: FormData) {
   try {
     const ip = await getClientIp()
-    checkRateLimit(rateLimiters.auth, `register:${ip}`)
-    const email = formData.get('email') as string
+    await checkRateLimit(rateLimiters.auth, `register:${ip}`)
+    const email = (formData.get('email') as string)?.trim().toLowerCase()
+    const password = formData.get('password') as string
     const displayName = formData.get('name') as string
 
     if (!email) return { error: 'Email is required' }
+    if (!password || password.length < 8) return { error: 'Password must be at least 8 characters' }
 
     const existing = await prisma.user.findUnique({ where: { email } })
     if (existing) return { error: 'An account with this email already exists' }
 
     const userId = 'user_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 10)
+    const passwordHash = await hashPassword(password)
 
-    await prisma.user.create({ data: { id: userId, email } })
+    await prisma.user.create({ data: { id: userId, email, passwordHash } })
     await ensureUserProfile(userId, displayName || email.split('@')[0])
-
-    const cookieStore = await cookies()
-    cookieStore.set('local_user_id', userId, { path: '/', maxAge: 60 * 60 * 24 * 30 })
-    cookieStore.set('local_user_email', email, { path: '/', maxAge: 60 * 60 * 24 * 30 })
+    await createSession(userId)
 
     return { success: true, userId }
   } catch (e: unknown) {
@@ -195,22 +177,41 @@ export async function registerUser(formData: FormData) {
 export async function loginWithEmail(formData: FormData) {
   try {
     const ip = await getClientIp()
-    checkRateLimit(rateLimiters.auth, `login:${ip}`)
-    const email = formData.get('email') as string
+    await checkRateLimit(rateLimiters.auth, `login:${ip}`)
+    const email = (formData.get('email') as string)?.trim().toLowerCase()
+    const password = formData.get('password') as string
 
     if (!email) return { error: 'Email is required' }
 
     const user = await prisma.user.findUnique({ where: { email } })
-    if (!user) return { error: 'No account found with this email. Try demo mode or create an account.' }
+    if (!user || !user.passwordHash) return { error: 'Invalid email or password' }
 
-    const cookieStore = await cookies()
-    cookieStore.set('local_user_id', user.id, { path: '/', maxAge: 60 * 60 * 24 * 30 })
-    cookieStore.set('local_user_email', email, { path: '/', maxAge: 60 * 60 * 24 * 30 })
+    const valid = await verifyPassword(password, user.passwordHash)
+    if (!valid) return { error: 'Invalid email or password' }
+
+    await createSession(user.id)
 
     return { success: true, userId: user.id }
   } catch (e: unknown) {
     logAndReport('loginWithEmail', e)
     return { error: 'Login failed. Please try again.' }
+  }
+}
+
+export async function logout() {
+  await destroySession()
+}
+
+export async function getCurrentUser() {
+  try {
+    const cookieStore = await cookies()
+    const isDemo = cookieStore.get(DEMO_COOKIE)?.value === 'true'
+    if (isDemo) return { userId: DEMO_USER_ID, email: 'demo@mission-os.local', isDemo: true }
+
+    const sessionUser = await getSessionUser()
+    return sessionUser ? { userId: sessionUser.id, email: sessionUser.email, isDemo: false } : null
+  } catch {
+    return null
   }
 }
 
@@ -265,7 +266,7 @@ export async function fetchMissionsAction(userId: string): Promise<ActionResult<
 
 export async function createMissionAction(input: import('@/core/types').MissionCreateInput, userId: string): Promise<ActionResult<any>> {
   try {
-    checkRateLimit(rateLimiters.mutations, `mission:create:${userId}`)
+    await checkRateLimit(rateLimiters.mutations, `mission:create:${userId}`)
     const authUserId = await getAuthUserId()
     if (authUserId !== userId) return { error: 'Unauthorized' }
     const mission = await missionService.create(input, userId)
@@ -278,7 +279,7 @@ export async function createMissionAction(input: import('@/core/types').MissionC
 
 export async function updateMissionAction(id: string, input: import('@/core/types').MissionUpdateInput, userId: string): Promise<ActionResult<any>> {
   try {
-    checkRateLimit(rateLimiters.mutations, `mission:update:${userId}`)
+    await checkRateLimit(rateLimiters.mutations, `mission:update:${userId}`)
     const authUserId = await getAuthUserId()
     if (authUserId !== userId) return { error: 'Unauthorized' }
     const mission = await missionService.update(id, input, userId)
@@ -303,7 +304,7 @@ export async function reopenMissionAction(id: string, userId: string): Promise<A
 
 export async function completeMissionAction(id: string, userId: string): Promise<ActionResult<any>> {
   try {
-    checkRateLimit(rateLimiters.mutations, `mission:complete:${userId}`)
+    await checkRateLimit(rateLimiters.mutations, `mission:complete:${userId}`)
     const authUserId = await getAuthUserId()
     if (authUserId !== userId) return { error: 'Unauthorized' }
     const mission = await missionService.complete(id, userId)
@@ -325,7 +326,7 @@ export async function completeMissionAction(id: string, userId: string): Promise
 
 export async function deleteMissionAction(id: string, userId: string): Promise<ActionResult<any>> {
   try {
-    checkRateLimit(rateLimiters.mutations, `mission:delete:${userId}`)
+    await checkRateLimit(rateLimiters.mutations, `mission:delete:${userId}`)
     const authUserId = await getAuthUserId()
     if (authUserId !== userId) return { error: 'Unauthorized' }
     await missionService.delete(id, userId)
@@ -344,7 +345,7 @@ export async function fetchCampaignsAction(userId: string) {
 }
 
 export async function createCampaignAction(input: import('@/core/types').CampaignCreateInput, userId: string) {
-  checkRateLimit(rateLimiters.mutations, `campaign:create:${userId}`)
+  await checkRateLimit(rateLimiters.mutations, `campaign:create:${userId}`)
   const authUserId = await getAuthUserId()
   if (authUserId !== userId) throw new Error('Unauthorized')
   return campaignService.create(input, userId)
@@ -357,7 +358,7 @@ export async function updateCampaignAction(id: string, input: import('@/core/typ
 }
 
 export async function deleteCampaignAction(id: string, userId: string) {
-  checkRateLimit(rateLimiters.mutations, `campaign:delete:${userId}`)
+  await checkRateLimit(rateLimiters.mutations, `campaign:delete:${userId}`)
   const authUserId = await getAuthUserId()
   if (authUserId !== userId) throw new Error('Unauthorized')
   return campaignService.delete(id, userId)
@@ -403,7 +404,7 @@ export async function getXPHistoryAction(userId: string) {
 
 // --- Focus Actions ---
 export async function startFocusSessionAction(input: import('@/core/types').FocusSessionInput, userId: string) {
-  checkRateLimit(rateLimiters.mutations, `focus:start:${userId}`)
+  await checkRateLimit(rateLimiters.mutations, `focus:start:${userId}`)
   const authUserId = await getAuthUserId()
   if (authUserId !== userId) throw new Error('Unauthorized')
   const { focusService } = await import('@/services/focus/focus-service')
@@ -411,7 +412,7 @@ export async function startFocusSessionAction(input: import('@/core/types').Focu
 }
 
 export async function endFocusSessionAction(sessionId: string, userId: string, data: { actualDuration: number; completed: boolean; distractions: number }) {
-  checkRateLimit(rateLimiters.mutations, `focus:end:${userId}`)
+  await checkRateLimit(rateLimiters.mutations, `focus:end:${userId}`)
   const authUserId = await getAuthUserId()
   if (authUserId !== userId) throw new Error('Unauthorized')
   const { focusService } = await import('@/services/focus/focus-service')
@@ -477,7 +478,7 @@ export async function getMemoryLaneTimelineAction(userId: string) {
 
 // --- AI Actions ---
 export async function generateDailyBriefingAction(userId: string) {
-  checkRateLimit(rateLimiters.ai, `ai:briefing:${userId}`)
+  await checkRateLimit(rateLimiters.ai, `ai:briefing:${userId}`)
   const authUserId = await getAuthUserId()
   if (authUserId !== userId) throw new Error('Unauthorized')
   const { aiService } = await import('@/services/ai/ai-service')
@@ -485,7 +486,7 @@ export async function generateDailyBriefingAction(userId: string) {
 }
 
 export async function generateWeeklyPlanAction(userId: string) {
-  checkRateLimit(rateLimiters.ai, `ai:weeklyplan:${userId}`)
+  await checkRateLimit(rateLimiters.ai, `ai:weeklyplan:${userId}`)
   const authUserId = await getAuthUserId()
   if (authUserId !== userId) throw new Error('Unauthorized')
   const { aiService } = await import('@/services/ai/ai-service')
@@ -493,7 +494,7 @@ export async function generateWeeklyPlanAction(userId: string) {
 }
 
 export async function breakDownGoalAction(goal: string, userId: string) {
-  checkRateLimit(rateLimiters.ai, `ai:goalbreakdown:${userId}`)
+  await checkRateLimit(rateLimiters.ai, `ai:goalbreakdown:${userId}`)
   const authUserId = await getAuthUserId()
   if (authUserId !== userId) throw new Error('Unauthorized')
   const { aiService } = await import('@/services/ai/ai-service')
@@ -501,7 +502,7 @@ export async function breakDownGoalAction(goal: string, userId: string) {
 }
 
 export async function getCoachingAction(question: string, userId: string) {
-  checkRateLimit(rateLimiters.ai, `ai:coaching:${userId}`)
+  await checkRateLimit(rateLimiters.ai, `ai:coaching:${userId}`)
   const authUserId = await getAuthUserId()
   if (authUserId !== userId) throw new Error('Unauthorized')
   const { aiService } = await import('@/services/ai/ai-service')
@@ -509,7 +510,7 @@ export async function getCoachingAction(question: string, userId: string) {
 }
 
 export async function getMotivationAction(userId: string) {
-  checkRateLimit(rateLimiters.ai, `ai:motivation:${userId}`)
+  await checkRateLimit(rateLimiters.ai, `ai:motivation:${userId}`)
   const authUserId = await getAuthUserId()
   if (authUserId !== userId) throw new Error('Unauthorized')
   const { aiService } = await import('@/services/ai/ai-service')

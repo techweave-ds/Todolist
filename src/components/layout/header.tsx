@@ -1,17 +1,55 @@
 'use client'
 
-import { Search, Command } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { Search, Command, LogOut, X } from 'lucide-react'
 import { useAppStore } from '@/store/app-store'
 import { NotificationBell } from '@/components/notifications/notification-bell'
+import { logout, endDemo } from '@/app/actions'
 
 export function Header() {
-  const { toggleCommandPalette, userId, isDemo } = useAppStore()
+  const router = useRouter()
+  const { toggleCommandPalette, userId, isDemo, setUserId } = useAppStore()
+  const [menuOpen, setMenuOpen] = useState(false)
+  const menuRef = useRef<HTMLDivElement>(null)
 
   const avatarInitial = isDemo
     ? 'D'
     : userId
       ? userId.charAt(0).toUpperCase()
       : 'U'
+
+  useEffect(() => {
+    const onClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', onClick)
+    return () => document.removeEventListener('mousedown', onClick)
+  }, [])
+
+  const handleLogout = async () => {
+    setMenuOpen(false)
+    try {
+      await logout()
+    } catch {
+      // ignore
+    }
+    setUserId(null)
+    router.push('/login')
+  }
+
+  const handleExitDemo = async () => {
+    setMenuOpen(false)
+    try {
+      await endDemo()
+    } catch {
+      // ignore
+    }
+    setUserId(null)
+    router.push('/login')
+  }
 
   return (
     <header className="fixed top-0 left-64 right-0 h-16 glass border-b z-30">
@@ -41,8 +79,35 @@ export function Header() {
 
           <NotificationBell />
 
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-sm font-bold text-white">
-            {avatarInitial}
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setMenuOpen(o => !o)}
+              className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center text-sm font-bold text-white hover:opacity-90 transition-opacity"
+              aria-label="Account menu"
+            >
+              {avatarInitial}
+            </button>
+            {menuOpen && (
+              <div className="absolute right-0 mt-2 w-48 rounded-lg glass-strong border shadow-xl py-1.5 z-40">
+                {isDemo ? (
+                  <button
+                    onClick={handleExitDemo}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+                  >
+                    <X className="w-4 h-4" />
+                    Exit Demo
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleLogout}
+                    className="w-full flex items-center gap-2 px-4 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-colors"
+                  >
+                    <LogOut className="w-4 h-4" />
+                    Sign Out
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

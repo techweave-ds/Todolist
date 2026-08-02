@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { createSupabaseServerClient } from '@/lib/supabase-server'
-import { DEMO_USER_ID, DEMO_COOKIE } from '@/lib/demo'
-import { cookies } from 'next/headers'
+import { getSessionUser } from '@/lib/auth'
 
 async function getUserId(): Promise<string | null> {
-  const cookieStore = await cookies()
-  const isDemo = cookieStore.get(DEMO_COOKIE)?.value === 'true'
-  if (isDemo) return DEMO_USER_ID
+  const sessionUser = await getSessionUser().catch(() => null)
+  if (sessionUser) return sessionUser.id
+
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) return null
+  const { createSupabaseServerClient } = await import('@/lib/supabase-server')
   const supabase = await createSupabaseServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   return user?.id ?? null

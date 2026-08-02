@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { rateLimiters, checkRateLimit } from '@/lib/rate-limit'
 
 export async function GET() {
-  checkRateLimit(rateLimiters.api, `health:global`)
+  await checkRateLimit(rateLimiters.api, `health:global`)
   const checks: Record<string, string | { status: string; error?: string }> = {
     uptime: process.uptime().toFixed(2) + 's',
     timestamp: new Date().toISOString(),
