@@ -23,11 +23,21 @@ export default function SettingsPage() {
     aiProcessing: true,
     exportData: false,
   })
+  const [appTheme, setAppTheme] = useState<string>(() => {
+    if (typeof document !== 'undefined') return document.documentElement.dataset.theme || 'dark-ops'
+    return 'dark-ops'
+  })
 
   const handleThemeChange = (themeId: string) => {
     const isDark = themeId !== 'minimal'
     document.documentElement.classList.toggle('dark', isDark)
     localStorage.setItem('theme', themeId)
+  }
+
+  const handleAppThemeChange = (theme: string) => {
+    setAppTheme(theme)
+    document.documentElement.dataset.theme = theme
+    localStorage.setItem('app-theme', theme)
   }
   useEffect(() => {
     if (userId) loadPreferences(userId)
@@ -233,7 +243,26 @@ export default function SettingsPage() {
       {activeTab === 'appearance' && (
         <div className="space-y-4">
           <div className="glass rounded-xl p-4">
-            <h3 className="text-sm font-medium mb-4">Theme</h3>
+            <h3 className="text-sm font-medium mb-4">App Theme</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { id: 'dark-ops', name: 'Dark Ops', gradient: 'from-purple-500 to-pink-500', desc: 'Purple neon on deep black' },
+                { id: 'signal-room', name: 'Signal Room', gradient: 'from-amber-400 to-yellow-600', desc: 'Warm ink-brown with brass accents' },
+              ].map(theme => (
+                <button
+                  key={theme.id}
+                  onClick={() => handleAppThemeChange(theme.id)}
+                  className={`glass rounded-xl p-4 text-center hover:scale-[1.02] transition-all ${appTheme === theme.id ? 'ring-2 ring-primary' : ''}`}
+                >
+                  <div className={`w-full h-16 rounded-lg bg-gradient-to-br ${theme.gradient} mb-3`} />
+                  <span className="text-sm font-medium">{theme.name}</span>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">{theme.desc}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="glass rounded-xl p-4">
+            <h3 className="text-sm font-medium mb-4">Workspace 3D Preset</h3>
             <div className="grid grid-cols-3 gap-3">
               {[
                 { id: 'neon-dreams', name: 'Neon Dreams', gradient: 'from-purple-500 to-pink-500' },
